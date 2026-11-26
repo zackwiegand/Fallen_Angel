@@ -1,0 +1,19 @@
+# Godot 4
+.godot/
+/android/
+*.translation
+export_presets.cfg
+export_credentials.cfg
+
+# Blender backups / autosaves
+*.blend1
+*.blend2
+*.blend@
+
+# OS / editor
+.DS_Store
+.vscode/
+*.swp
+
+# Claude Code local settings
+.claude/settings.local.json
