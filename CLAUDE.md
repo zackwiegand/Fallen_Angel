@@ -132,6 +132,27 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
 - New guitar: must follow the sprite-poc GUITAR CONTRACT (same socket positions) — hands are baked against them.
 - New material: add a `Toon.PALETTE` entry with the same name as the Blender material.
 
+## Gremlin (first enemy) / adding enemy types
+- Pipeline: `blender -b -P blender/enemies/gremlin.py && godot --headless --path . --import` →
+  `assets/enemies/gremlin/gremlin.glb` (+ `blender/enemies/gremlin.blend` for inspection).
+  `blender/enemies/enemy_common.py` is the shared part: control rig with 2-bone IK chains (pole angles
+  auto-calibrated) + Copy Rotation "orient" locks for hands/feet → procedural clips (functions of phase) →
+  per-frame bone matrices baked onto a constraint-free export rig at 30 fps → one rigidly skinned mesh → GLB,
+  one NLA track per clip. Mesh helpers come from sprite-poc (exec'd, untouched) + `ring_y`, `tube`, `gait`.
+- Gremlin: ≤ 1/3 of the rocker (horn tips 0.78 m), dark red `GremlinSkin`, ivory `GremlinHorn` (horns, claws,
+  spikes), emissive `GremlinEye` / `GremlinMaw` / `GremlinFire` (fireball held while throwing, scaled by the
+  `held` bone). Clips: idle, walk (0.43 m/s), gallop (2.17 m/s), throw (release 0.55 s), slash (hit 0.27 s), hit,
+  death (holds). Locomotion is in place: move the body at `GremlinRig.WALK_SPEED` / `GALLOP_SPEED`.
+- `scripts/enemies/gremlin_rig.gd` (`GremlinRig`): own 64px SubViewport + outlined Sprite2D, same camera/scale
+  as the player (reads `player.gd` consts), feet at the node origin, contact shadow. `facing` (8-dir snap),
+  `play(anim)` (one-shots return to the last loop; death holds), `anim_length()`, `hand_point()` /
+  `hand_ground()` (throwing claw), `anim_event` (step / throw_release / slash_hit / death_done via method
+  tracks from `ANIM_EVENTS`), `action_finished`. `tools/gremlin_shots.gd -- <dir>` (needs a window): pose ×
+  8-facing sheet, motion strips, scale shot next to the rocker.
+- New enemy: copy gremlin.py's shape (BONES, IK_CHAINS, ORIENT, build_model, clips, `build_enemy(...)`),
+  add its materials to `Toon.PALETTE` / `EMISSIVE`, write a rig script like `GremlinRig` (or generalise it
+  once there are two), mirror clip event times in its `ANIM_EVENTS`.
+
 ## Next steps
 - Inner outlines between parts (vertex colour `part` is already exported per part group for an ID pass).
 - Hand-painted dungeon art can replace the generated atlas in place (same layout).
