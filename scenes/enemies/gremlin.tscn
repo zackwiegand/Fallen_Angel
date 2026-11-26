@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/gremlin.gd" id="1_gremlin"]
+[ext_resource type="Script" path="res://scripts/enemies/gremlin_rig.gd" id="2_rig"]
+[ext_resource type="Script" path="res://scripts/ai/nav_mover.gd" id="3_nav"]
+[ext_resource type="Script" path="res://scripts/ai/perception.gd" id="4_perception"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_feet"]
+radius = 5.0
+
+[node name="Gremlin" type="CharacterBody2D"]
+motion_mode = 1
+script = ExtResource("1_gremlin")
+
+[node name="Feet" type="CollisionShape2D" parent="."]
+scale = Vector2(1, 0.62)
+shape = SubResource("CircleShape2D_feet")
+
+[node name="Rig" type="Node2D" parent="."]
+script = ExtResource("2_rig")
+
+[node name="Nav" type="NavigationAgent2D" parent="."]
+script = ExtResource("3_nav")
+
+[node name="Perception" type="Node" parent="."]
+script = ExtResource("4_perception")
