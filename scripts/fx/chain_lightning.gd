@@ -1,16 +1,19 @@
 class_name ChainLightning
 extends Node2D
-## Releases `charges` lightning hops one after another. The first goes from the guitar to the
-## nearest dummy ahead; each next hop jumps to the nearest dummy it hasn't hit yet, so the chain
-## sweeps the whole group before revisiting anyone (then starts a new sweep). A lone dummy gets
-## re-hit. So N charges = N hits, spread over as many targets as are in range.
+## Releases `charges` lightning hops one after another, by priority:
+##   1. the first bolt strikes the nearest enemy ahead (within FIRST_RANGE of the guitar);
+##   2. each next bolt jumps to the nearest enemy it hasn't hit yet within BOUNCE_RANGE of the current one;
+##   3. if there's no new enemy in range, it bounces back to the enemy it came from (a lone enemy is re-hit).
+## Every target must also stay within CHAIN_REACH of the cast origin, so the chain can't walk across the map.
+## So N charges = N hits, spread over the enemies close together near the caster.
 ## The pedal chain (SpellCast) sets the rest: pierce = each bolt passes through its target and carries
 ## on PIERCE_OVERSHOOT px, striking everything on its line too; echoes = Damage.deal repeats on every
 ## hit; phased = purple bolts; ghost = a delay repeat of the whole chain (translucent).
 
 const HOP_DELAY := 0.09
-const FIRST_RANGE := 230.0       # px
-const BOUNCE_RANGE := 260.0
+const FIRST_RANGE := 160.0       # px (~6 m) guitar -> first target
+const BOUNCE_RANGE := 80.0       # px (~3 m) max jump between targets
+const CHAIN_REACH := 200.0       # px (~7.5 m) no target farther than this from the cast origin
 const DAMAGE := 5
 const BOLT_LIFE := 0.16
 const PIERCE_OVERSHOOT := 45.0   # px a piercing bolt carries on past its target
@@ -31,6 +34,7 @@ var ghost := false
 
 var _bolts: Array = []            # [PackedVector2Array, age]
 var _current: Node2D
+var _previous: Node2D             # the target the chain came from (bounce-back fallback)
 var _visited: Array[Node2D] = []
 var _from := Vector2.ZERO
 var _hops_left := 0
@@ -63,7 +67,7 @@ func _hop() -> void:
 	_hops_left -= 1
 	if sfx:
 		sfx.play(&"zap")
-	if _current == null:              # nothing in range: crackle off into the air
+	if not _alive(_current):          # nothing in range (or it died): crackle off into the air
 		_bolts.append([_jagged(_from, _from + aim * 70.0), 0.0])
 		_hops_left = 0
 		return
@@ -79,13 +83,19 @@ func _hop() -> void:
 		_bolts.append([_jagged(_from, to), 0.0])
 	Damage.deal(_current, damage, &"lightning", dir, echoes, echo_delay, sfx)
 	_from = to
-	_visited.append(_current)
-	var next := _nearest(to, BOUNCE_RANGE, _visited)
-	if next == null:                  # everyone in range has been hit: start a new sweep
-		_visited = [_current]
-		next = _nearest(to, BOUNCE_RANGE, _visited)
-	if next:
-		_current = next
+	if _current not in _visited:
+		_visited.append(_current)
+	var next := _nearest(to, BOUNCE_RANGE, _visited)     # 2. a new enemy in range
+	if next == null and _alive(_previous):                # 3. none: bounce back to where it came from
+		next = _previous
+	if next == null:                                      # lone target: strike it again
+		next = _current if _alive(_current) else null
+	_previous = _current
+	_current = next
+
+
+func _alive(e: Node2D) -> bool:
+	return is_instance_valid(e) and e.is_in_group("enemies")
 
 
 func _pick_first() -> Node2D:
@@ -106,7 +116,7 @@ func _nearest(from: Vector2, max_range: float, exclude: Array[Node2D]) -> Node2D
 	var best: Node2D = null
 	var best_d := max_range
 	for e: Node2D in get_tree().get_nodes_in_group("enemies"):
-		if e in exclude:
+		if e in exclude or origin.distance_to(e.hit_point()) > CHAIN_REACH:
 			continue
 		var d := from.distance_to(e.hit_point())
 		if d < best_d:

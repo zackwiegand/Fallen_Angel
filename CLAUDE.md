@@ -105,7 +105,8 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
 - `scripts/spellbook.gd`: Fire = any E-minor / G-major triad within 1 s (any order/inversion) → `cast`
   animation (new, baked in export_gltf.py `anim_cast`; release at 0.386 s) → `scripts/fx/fireball.gd`.
   Lightning = skip pattern 1 3 2 4 3 5…, up or down; 4 notes = 1 charge, +1 per note (max 12), released on a
-  1.2 s pause (Spellbook.SKIP_RELEASE) or pattern break → `scripts/fx/chain_lightning.gd` (N hits; sweeps every dummy in range before revisiting; 7 dummies in an arc).
+  1.2 s pause (Spellbook.SKIP_RELEASE) or pattern break → `scripts/fx/chain_lightning.gd` (N hits by priority: nearest enemy ahead → nearest *new* enemy within BOUNCE_RANGE 80 px → else bounce back to
+  the previous target; all within CHAIN_REACH 200 px of the caster; `tools/test_lightning.gd`).
 - Charging: `Spellbook.charge_changed(spell, charges)` + `skip_progress()` tell code a spell is building.
   `scripts/fx/charge_aura.gd` (two layers wrapping the sprite) grows crackling arcs per charge, ground ring
   from 6, pulse per charge, burst on release; `Sfx.set_charge` loops a rising hum + per-charge tick.

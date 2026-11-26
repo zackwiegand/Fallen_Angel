@@ -76,7 +76,8 @@ func _run() -> void:
 	await create_timer(1.4).timeout
 	check("fireball hit Dummy4 for 12 (got %d)" % mid.total_damage, mid.total_damage == 12)
 
-	# lightning: 10 skip notes = 7 charges -> should sweep all 7 dummies, once each
+	# lightning: 10 skip notes = 7 charges -> 7 hits on the dummies near the player (targeting order
+	# itself is covered by tools/test_lightning.gd)
 	for d in dummies: d.total_damage = 0
 	p.position = mid.position + Vector2(0, 65)
 	for n in [0, 2, 1, 3, 2, 4, 3, 5, 4, 6]:
@@ -84,7 +85,8 @@ func _run() -> void:
 		await create_timer(0.15).timeout
 	await create_timer(Spellbook.SKIP_RELEASE + 1.2).timeout
 	var hit_counts: Array = dummies.map(func(d): return d.total_damage / 5)
-	check("lightning x7 hit all 7 dummies once (hits per dummy %s)" % [hit_counts], hit_counts.all(func(c): return c == 1))
+	var total: int = hit_counts.reduce(func(a, c): return a + c, 0)
+	check("lightning x7 = 7 hits on nearby dummies (hits per dummy %s)" % [hit_counts], total == 7 and hit_counts[3] >= 1)
 
 	# swing: 25px left of Dummy1, facing right
 	var before: int = world.get_node("Dummy1").total_damage
