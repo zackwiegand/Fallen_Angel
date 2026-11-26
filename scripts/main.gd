@@ -62,6 +62,8 @@ func _ready() -> void:
 	pedal_menu.pixel_scale = PIXEL_SCALE
 	add_child(pedal_menu)
 	$Game.stretch_shrink = PIXEL_SCALE
+	player.get_node("Camera2D").scrolled.connect(_on_camera_scrolled)
+	_on_camera_scrolled(Vector2.ZERO)
 	_fit_window()
 
 
@@ -71,6 +73,18 @@ func _fit_window() -> void:
 	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED and size != DisplayServer.window_get_size():
 		DisplayServer.window_set_size(size)
 		DisplayServer.window_set_position(screen.position + (screen.size - size) / 2)
+
+
+## Smooth scrolling: the game view is PixelCamera.MARGIN_PX game px bigger than the window on every
+## side and shifted by the camera's sub-pixel remainder, in whole window pixels.
+func _on_camera_scrolled(subpixel: Vector2) -> void:
+	var margin := float(PixelCamera.MARGIN_PX * PIXEL_SCALE)
+	var shift := (-subpixel * PIXEL_SCALE).round()
+	var game: Control = $Game
+	game.offset_left = -margin + shift.x
+	game.offset_right = margin + shift.x
+	game.offset_top = -margin + shift.y
+	game.offset_bottom = margin + shift.y
 
 
 func _process(_delta: float) -> void:

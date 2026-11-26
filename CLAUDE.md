@@ -49,6 +49,11 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
   0.97 m deep (floor), 0.76 m tall (wall face).
 
 ## Current architecture (built)
+- Camera: `scripts/pixel_camera.gd` (`PixelCamera`, the player's Camera2D) snaps to whole game px and emits
+  `scrolled(subpixel)`; `main.gd` renders the game view MARGIN_PX bigger on each side and shifts it by the
+  remainder in window px, so the world scrolls smoothly (no 0/1/2 px judder = "camera shake") while the
+  low-res render stays pixel-perfect. Room bounds = Camera2D `limit_*` (built-in clamp off; PixelCamera clamps).
+  Test: `godot --headless --path . --fixed-fps 60 -s tools/test_camera.gd`.
 - `blender/export_gltf.py` — `blender -b -P blender/export_gltf.py`. Execs the sprite-poc scripts, adds a plain
   under-layer (body visible with armor/boots off), splits parts into slots (body/armor/boots), rigidly skins
   each slot to one shared skeleton (+ `root` bone = lift/foot planting, + `guitar` bone = prop placement),
