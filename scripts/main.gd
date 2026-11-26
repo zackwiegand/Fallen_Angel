@@ -2,9 +2,10 @@ extends Control
 ## Game shell: the 2D world renders into a low-res SubViewport that the container upscales
 ## (nearest, integer) to the window; the HUD stays at full resolution on top.
 ## Stretch is off, so a bigger window shows more of the world at the same pixel size; the window
-## opens big enough for the whole room (capped to the screen).
+## opens at VIEW_PX game pixels (capped to the screen) and the player's camera follows through the floor.
 
 const PIXEL_SCALE := 4
+const VIEW_PX := Vector2i(480, 320)    # game pixels visible when the window opens
 
 const BINDINGS := {
 	"move_up": [KEY_UP], "move_down": [KEY_DOWN], "move_left": [KEY_LEFT], "move_right": [KEY_RIGHT],
@@ -53,14 +54,12 @@ func _ready() -> void:
 	view.offset_top = -view.custom_minimum_size.y - 10
 	view.offset_bottom = -10
 	$Game.stretch_shrink = PIXEL_SCALE
-	_fit_window_to_room()
+	_fit_window()
 
 
-func _fit_window_to_room() -> void:
-	var walls: TileMapLayer = $Game/GameViewport/World/Walls
-	var room := walls.get_used_rect().size * walls.tile_set.tile_size * PIXEL_SCALE
+func _fit_window() -> void:
 	var screen := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
-	var size := room.min(screen.size - Vector2i(0, 60))      # leave room for the title bar
+	var size := (VIEW_PX * PIXEL_SCALE).min(screen.size - Vector2i(0, 60))      # leave room for the title bar
 	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED and size != DisplayServer.window_get_size():
 		DisplayServer.window_set_size(size)
 		DisplayServer.window_set_position(screen.position + (screen.size - size) / 2)

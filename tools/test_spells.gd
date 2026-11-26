@@ -62,9 +62,9 @@ func _run() -> void:
 	var dummies := get_nodes_in_group("enemies")
 	check("7 dummies in the room", dummies.size() == 7)
 
-	# fireball: stand below the middle dummy (Dummy4, at 240,145), facing it
-	var mid: Node = world.get_node("Dummy4")
-	p.position = Vector2(240, 205)
+	# fireball: stand 60px below the middle dummy (Dummy4), facing it (positions relative to the level)
+	var mid: Node2D = world.get_node("Dummy4")
+	p.position = mid.position + Vector2(0, 60)
 	p.facing = Vector2(0, 1)
 	p.rig.face(PI)
 	for n in [0, 1, 3]:
@@ -76,7 +76,7 @@ func _run() -> void:
 
 	# lightning: 10 skip notes = 7 charges -> should sweep all 7 dummies, once each
 	for d in dummies: d.total_damage = 0
-	p.position = Vector2(240, 210)
+	p.position = mid.position + Vector2(0, 65)
 	for n in [0, 2, 1, 3, 2, 4, 3, 5, 4, 6]:
 		p.play_note(n)
 		await create_timer(0.15).timeout
@@ -84,9 +84,9 @@ func _run() -> void:
 	var hit_counts: Array = dummies.map(func(d): return d.total_damage / 5)
 	check("lightning x7 hit all 7 dummies once (hits per dummy %s)" % [hit_counts], hit_counts.all(func(c): return c == 1))
 
-	# swing: next to Dummy1 (96,175) facing right
+	# swing: 25px left of Dummy1, facing right
 	var before: int = world.get_node("Dummy1").total_damage
-	p.position = Vector2(71, 177)
+	p.position = world.get_node("Dummy1").position + Vector2(-25, 2)
 	p.facing = Vector2(1, 0)
 	p.rig.face(PI / 2)
 	p.rig.play_action(&"swing")

@@ -43,8 +43,8 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
   the diagonal iso of the sprite-poc renders. The character still turns to 8 facings; environment art is
   drawn from this single view only.
 - **One pixel scale everywhere (no mixels):** 1 game px = 4×4 window px (nearest). Stretch is off, so the game
-  buffer = window / 4 (bigger window = more view, same sizes); window opens at room size (480×320 → 1920×1280,
-  capped to the screen). 1 texel = 1 game px
+  buffer = window / 4 (bigger window = more view, same sizes); window opens at a 480×320 game-px view
+  (`main.gd` VIEW_PX → 1920×1280, capped to the screen) and the player's Camera2D follows, clamped to the room. 1 texel = 1 game px
   = 3/80 m. Ground depth foreshortens by sin 38°, wall height by cos 38°. A 16px tile = 0.6 m wide,
   0.97 m deep (floor), 0.76 m tall (wall face).
 
@@ -62,9 +62,15 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
 - `scripts/toon.gd` + `shaders/toon.gdshader` — sprite-poc toon materials (3 bands, Blender lights, Lambert /π),
   swapped in by imported material name. `shaders/sprite_outline.gdshader` — hard alpha + 1px outer outline.
 - `scripts/player.gd` — 8-dir movement in screen space, facing snap, input actions (bound in `main.gd`).
-- Dungeon: `tools/build_dungeon.gd` generates `assets/env/dungeon_tiles.png` (16px atlas, layout in the
-  script header), `dungeon_tileset.tres` and `scenes/dungeon.tscn` (Floor + y-sorted Walls TileMapLayers).
-  Wall tiles sort by their base line (y_sort_origin), so the player walks behind pillars.
+- Dungeon (demo floor, 56×38 tiles = 896×608 px): `tools/build_dungeon.gd` (art pass, import, scene pass; see its
+  header) generates `assets/env/dungeon_tiles.png` (floor + 2 seamless cobble variants, walls, pillars),
+  `dungeon_decals.png` (moss, blood, cracks, puddles, bones, skulls, chains, rubble, bone piles), `dungeon_tileset.tres`
+  and `scenes/dungeon.tscn`: Floor, Decals (no collision; swap the PNG for hand-painted art, same layout) and
+  y-sorted Walls TileMapLayers. Wall/pillar tiles sort by their base line (y_sort_origin), so the player walks
+  behind pillars; only the base row collides. Layout (pillars, decals, spawns) = consts at the script top.
+  `Navigation` = NavigationRegion2D baked at build time over the floor minus pillars/dummies (agent radius 6 px) →
+  NavigationAgent2D works. `Spawns` holds Marker2Ds in groups `gremlin_spawn` and `pedal_spawn` (meta `pedal_id`).
+  `tools/test_floor.gd` (size, markers, nav paths), `tools/floor_shots.gd` (overview + 4x crops, needs a window).
 - Tools: `tools/capture.gd` (contact sheet poses × 8 facings, optional gear indices),
   `tools/screenshot.gd`, `tools/test_logic.gd` (headless state machine + gear smoke test), `tools/inspect.gd`.
 
@@ -140,6 +146,18 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
   prefixes to the slot lists in `export_gltf.py`, re-export, add a `GearCatalog` entry. New slot = new key.
 - New guitar: must follow the sprite-poc GUITAR CONTRACT (same socket positions) — hands are baked against them.
 - New material: add a `Toon.PALETTE` entry with the same name as the Blender material.
+
+## Pedal models
+- `blender/pedals/build_pedals.py` (`blender -b -P blender/pedals/build_pedals.py`, then `godot --headless --path . --import`)
+  builds every pedal procedurally → `assets/pedals/pedal_<id>.glb` (+ `pedals.blend` for inspection). The PEDAL
+  CONTRACT is in its header: origin = base centre, footswitch edge toward -Y (Blender), one merged mesh +
+  `jack_in` (pedal's right) / `jack_out` (left) Empties, LED material named `Led<x>`.
+- `scripts/pedals/pedal_view.gd` (`PedalView`): `setup(id)`, `facing` (8-dir snap), `lit` (LED ↔ `Led<x>Off`),
+  `jack_point(&"in"/&"out")` (local 2D px). Own 40px SubViewport, same camera/scale as the rig, re-renders only
+  when facing/lit change. ~16 px wide on screen.
+- Add a pedal: write `build_<id>()` in build_pedals.py (chunky: knobs/LED ≥ 2–3 px, value contrast), register it in
+  `PEDALS`, add its material names to `Toon.PALETTE` (+ `Led<x>` in `Toon.EMISSIVE` and `Led<x>Off` in the palette),
+  rebuild, check with `godot --path . -s tools/pedal_shots.gd -- <dir>` (needs a window).
 
 ## Next steps
 - Inner outlines between parts (vertex colour `part` is already exported per part group for an ID pass).

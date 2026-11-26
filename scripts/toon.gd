@@ -22,8 +22,20 @@ const PALETTE := {
 	# recolour variants used by gear items
 	"BonePlate": [Vector3(0.09, 0.07, 0.045), Vector3(0.36, 0.31, 0.22), Vector3(0.78, 0.72, 0.56), true],
 	"Oxblood": [Vector3(0.03, 0.003, 0.003), Vector3(0.14, 0.015, 0.012), Vector3(0.34, 0.05, 0.04), false],
+	# effect pedals (blender/pedals/build_pedals.py)
+	"ChiefWhite": [Vector3(0.2, 0.21, 0.24), Vector3(0.58, 0.6, 0.64), Vector3(0.92, 0.92, 0.9), false],
+	"ChiefBlue": [Vector3(0.004, 0.015, 0.09), Vector3(0.02, 0.09, 0.42), Vector3(0.1, 0.3, 0.85), false],
+	"Rubber": [Vector3(0.004, 0.004, 0.005), Vector3(0.012, 0.012, 0.014), Vector3(0.035, 0.035, 0.04), false],
+	"KnobBlack": [Vector3(0.004, 0.004, 0.005), Vector3(0.018, 0.018, 0.02), Vector3(0.12, 0.12, 0.13), true],
+	"KnobSilver": [Vector3(0.12, 0.12, 0.14), Vector3(0.45, 0.45, 0.48), Vector3(0.85, 0.85, 0.88), true],
+	"SkymanPurple": [Vector3(0.02, 0.004, 0.05), Vector3(0.09, 0.02, 0.22), Vector3(0.34, 0.12, 0.65), true],
+	"SkymanLilac": [Vector3(0.15, 0.08, 0.3), Vector3(0.42, 0.3, 0.72), Vector3(0.78, 0.65, 0.98), false],
+	# bypassed (unlit) pedal LEDs; PedalView swaps "Led<x>" -> "Led<x>Off"
+	"LedRedOff": [Vector3(0.03, 0.004, 0.004), Vector3(0.1, 0.01, 0.01), Vector3(0.2, 0.03, 0.03), false],
+	"LedVioletOff": [Vector3(0.025, 0.01, 0.04), Vector3(0.08, 0.035, 0.13), Vector3(0.18, 0.08, 0.26), false],
 }
-const EMISSIVE := {"Eye": Vector3(1.0, 0.05, 0.0)}
+const EMISSIVE := {"Eye": Vector3(1.0, 0.05, 0.0), "LedRed": Vector3(1.0, 0.06, 0.03),
+		"LedViolet": Vector3(1.0, 0.62, 1.0)}
 
 static var _cache := {}
 
