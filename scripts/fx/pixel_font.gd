@@ -1,6 +1,7 @@
 class_name PixelFont
-## Tiny 3x5 bitmap digits (+ a music-note glyph "n") drawn as 1px rects with a dark outline,
-## so text stays on the game's pixel grid.
+## Tiny 3x5 bitmap font (digits, capitals, a little punctuation, + a music-note glyph "n") drawn as
+## 1px rects with a dark outline, so text stays on the game's pixel grid. Lower-case letters other
+## than "n" are drawn as capitals.
 
 const GLYPHS := {
 	"0": ["111", "101", "101", "101", "111"], "1": ["010", "110", "010", "010", "111"],
@@ -9,6 +10,26 @@ const GLYPHS := {
 	"6": ["111", "100", "111", "101", "111"], "7": ["111", "001", "010", "010", "010"],
 	"8": ["111", "101", "111", "101", "111"], "9": ["111", "101", "111", "001", "111"],
 	"n": ["0110", "0101", "0100", "1100", "1100"],
+	# capitals + punctuation (pickup popups, pedalboard menu); lower case is drawn as capitals
+	"A": ["010", "101", "111", "101", "101"], "B": ["110", "101", "110", "101", "110"],
+	"C": ["011", "100", "100", "100", "011"], "D": ["110", "101", "101", "101", "110"],
+	"E": ["111", "100", "110", "100", "111"], "F": ["111", "100", "110", "100", "100"],
+	"G": ["011", "100", "101", "101", "011"], "H": ["101", "101", "111", "101", "101"],
+	"I": ["111", "010", "010", "010", "111"], "J": ["001", "001", "001", "101", "010"],
+	"K": ["101", "101", "110", "101", "101"], "L": ["100", "100", "100", "100", "111"],
+	"M": ["10001", "11011", "10101", "10001", "10001"], "N": ["1001", "1101", "1011", "1001", "1001"],
+	"O": ["010", "101", "101", "101", "010"], "P": ["110", "101", "110", "100", "100"],
+	"Q": ["010", "101", "101", "110", "011"], "R": ["110", "101", "110", "101", "101"],
+	"S": ["011", "100", "010", "001", "110"], "T": ["111", "010", "010", "010", "010"],
+	"U": ["101", "101", "101", "101", "111"], "V": ["101", "101", "101", "101", "010"],
+	"W": ["10001", "10001", "10101", "11011", "10001"], "X": ["101", "101", "010", "101", "101"],
+	"Y": ["101", "101", "010", "010", "010"], "Z": ["111", "001", "010", "100", "111"],
+	" ": ["00", "00", "00", "00", "00"], "-": ["000", "000", "111", "000", "000"],
+	"+": ["000", "010", "111", "010", "000"], "!": ["1", "1", "1", "0", "1"],
+	".": ["0", "0", "0", "0", "1"], ",": ["00", "00", "00", "01", "10"], ":": ["0", "1", "0", "1", "0"],
+	">": ["100", "010", "001", "010", "100"], "<": ["001", "010", "100", "010", "001"],
+	"/": ["001", "001", "010", "100", "100"], "(": ["01", "10", "10", "10", "01"],
+	")": ["10", "01", "01", "01", "10"],
 }
 const OUTLINE := Color("080408")
 
@@ -16,7 +37,7 @@ const OUTLINE := Color("080408")
 static func width(text: String) -> int:
 	var w := 0
 	for ch in text:
-		w += GLYPHS.get(ch, GLYPHS["0"])[0].length() + 1
+		w += _glyph(ch)[0].length() + 1
 	return w - 1
 
 
@@ -26,7 +47,7 @@ static func draw(ci: CanvasItem, pos: Vector2, text: String, color: Color) -> vo
 	for pass_i in 2:
 		var x := 0
 		for ch in text:
-			var g: Array = GLYPHS.get(ch, GLYPHS["0"])
+			var g: Array = _glyph(ch)
 			for row in g.size():
 				var line: String = g[row]
 				for col in line.length():
@@ -38,3 +59,9 @@ static func draw(ci: CanvasItem, pos: Vector2, text: String, color: Color) -> vo
 					else:
 						ci.draw_rect(Rect2(p, Vector2.ONE), color)
 			x += g[0].length() + 1
+
+
+static func _glyph(ch: String) -> Array:
+	if GLYPHS.has(ch):
+		return GLYPHS[ch]
+	return GLYPHS.get(ch.to_upper(), GLYPHS["0"])
