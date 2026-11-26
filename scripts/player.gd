@@ -30,6 +30,7 @@ signal note_played(index: int, instrument: int, octave: int)
 
 var sfx: Sfx
 var spellbook: Spellbook
+var pedalboard: Pedalboard             # collected effect pedals (scripts/pedals/)
 var aura_back: ChargeAura
 var aura_front: ChargeAura
 var instrument := 0                    # Sfx.INSTRUMENTS index for the note keys
@@ -50,9 +51,16 @@ func _ready() -> void:
 	sprite.texture = $RigViewport.get_texture()
 	# place the rig's feet (3D origin) on this node's position, for y-sorting and the shadow
 	sprite.offset = Vector2(0, -round(CAM_TARGET_Y * cos(e) / METRES_PER_PX))
+	pedalboard = Pedalboard.new()
+	pedalboard.name = "Pedalboard"
+	add_child(pedalboard)
 	sfx = Sfx.new()
 	sfx.name = "Sfx"
+	sfx.bus = Pedalboard.BUS           # live notes, strum and spell sounds go through the pedals
 	add_child(sfx)
+	var trail := PedalTrail.new()       # the pedals float after the player, y-sorted in the world
+	trail.player = self
+	get_parent().add_child.call_deferred(trail)
 	spellbook = Spellbook.new()
 	spellbook.name = "Spellbook"
 	add_child(spellbook)
@@ -161,25 +169,16 @@ func _on_spell(spell: StringName, power: int) -> void:
 			rig.play_action(&"cast")          # the fireball leaves on the thrust (cast_release)
 		&"lightning":
 			aura_front.discharge(0.15 + power / ChargeAura.FULL)
-			var chain := ChainLightning.new()
-			chain.charges = power
-			chain.origin = guitar_tip()
-			chain.aim = ground_to_screen(facing).normalized()
-			chain.sfx = sfx
-			get_parent().add_child(chain)
+			var cast := SpellCast.lightning(power, guitar_tip(), ground_to_screen(facing), self, sfx)
+			pedalboard.apply(cast).launch(get_parent())
 
 
 func _on_anim_event(event: StringName) -> void:
 	match event:
 		&"cast_release":
-			var fb := Fireball.new()
 			var tip := _tip_ground()
-			fb.position = tip[0]
-			fb.height = tip[1]
-			fb.velocity = ground_to_screen(facing) * Fireball.SPEED
-			fb.caster = self
-			fb.sfx = sfx
-			get_parent().add_child(fb)
+			var cast := SpellCast.fire(tip[0], tip[1], ground_to_screen(facing), self, sfx)
+			pedalboard.apply(cast).launch(get_parent())
 		&"swing_hit":
 			var hit := false
 			for e: Node2D in get_tree().get_nodes_in_group("enemies"):

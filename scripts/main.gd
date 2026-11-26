@@ -13,6 +13,7 @@ const BINDINGS := {
 	"cycle_guitar": [KEY_1], "cycle_armor": [KEY_2], "cycle_boots": [KEY_3], "toggle_music": [KEY_M],
 	"seq_record": [KEY_Z], "seq_play": [KEY_X], "seq_clear": [KEY_C], "cycle_instrument": [KEY_V],
 	"octave_down": [KEY_BRACKETLEFT], "octave_up": [KEY_BRACKETRIGHT], "tap_tempo": [KEY_T], "seq_rest": [KEY_SPACE],
+	"pedal_menu": [KEY_TAB], "pedal_bypass": [KEY_B, KEY_SPACE],      # PedalboardMenu (bypass only in the menu)
 	# note keys, low to high (Spellbook: E minor pentatonic)
 	"note_0": [KEY_Q], "note_1": [KEY_W], "note_2": [KEY_E], "note_3": [KEY_R],
 	"note_4": [KEY_A], "note_5": [KEY_S], "note_6": [KEY_D], "note_7": [KEY_F],
@@ -50,6 +51,13 @@ func _ready() -> void:
 	view.anchor_bottom = 1.0
 	view.offset_top = -view.custom_minimum_size.y - 10
 	view.offset_bottom = -10
+	# effect pedals: pickups on the floor + the pedalboard screen (Tab)
+	PedalPickup.spawn_all(player.get_parent(), player)
+	var pedal_menu := PedalboardMenu.new()
+	pedal_menu.name = "PedalboardMenu"
+	pedal_menu.pedalboard = player.pedalboard
+	pedal_menu.pixel_scale = PIXEL_SCALE
+	add_child(pedal_menu)
 	$Game.stretch_shrink = PIXEL_SCALE
 	_fit_window()
 
@@ -67,7 +75,7 @@ func _process(_delta: float) -> void:
 			+ "Notes  Q W E R A S D F  =  E G A B D E G A\n"
 			+ "Fire: triad (Q W R, W R A ...)   Lightning: skip 1 3 2 4 3 5... (Q E W R E A ...), pause to release\n"
 			+ player.spellbook.describe() + "    Instrument (V): " + Sfx.INSTRUMENTS[player.instrument][0] + "    Octave ([ ]): %+d\n" % player.octave
-			+ player.gear_summary())
+			+ player.gear_summary() + "\nPedals (Tab): " + player.pedalboard.summary())
 
 
 func _setup_input() -> void:
