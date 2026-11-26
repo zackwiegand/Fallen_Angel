@@ -33,9 +33,15 @@ const PALETTE := {
 	# bypassed (unlit) pedal LEDs; PedalView swaps "Led<x>" -> "Led<x>Off"
 	"LedRedOff": [Vector3(0.03, 0.004, 0.004), Vector3(0.1, 0.01, 0.01), Vector3(0.2, 0.03, 0.03), false],
 	"LedVioletOff": [Vector3(0.025, 0.01, 0.04), Vector3(0.08, 0.035, 0.13), Vector3(0.18, 0.08, 0.26), false],
+	# enemies: devil-gremlin (blender/enemies/gremlin.py)
+	"GremlinSkin": [Vector3(0.035, 0.002, 0.003), Vector3(0.17, 0.012, 0.01), Vector3(0.45, 0.045, 0.028), false],
+	"GremlinHorn": [Vector3(0.1, 0.075, 0.045), Vector3(0.42, 0.35, 0.22), Vector3(0.82, 0.74, 0.54), false],
 }
-const EMISSIVE := {"Eye": Vector3(1.0, 0.05, 0.0), "LedRed": Vector3(1.0, 0.06, 0.03),
-		"LedViolet": Vector3(1.0, 0.62, 1.0)}
+const EMISSIVE := {
+	"Eye": Vector3(1.0, 0.05, 0.0),
+	"LedRed": Vector3(1.0, 0.06, 0.03), "LedViolet": Vector3(1.0, 0.62, 1.0),
+	"GremlinEye": Vector3(1.0, 0.82, 0.1), "GremlinMaw": Vector3(1.0, 0.32, 0.02), "GremlinFire": Vector3(1.0, 0.6, 0.12),
+}
 
 static var _cache := {}
 
