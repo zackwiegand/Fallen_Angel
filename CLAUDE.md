@@ -159,6 +159,25 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
   `PEDALS`, add its material names to `Toon.PALETTE` (+ `Led<x>` in `Toon.EMISSIVE` and `Led<x>Off` in the palette),
   rebuild, check with `godot --path . -s tools/pedal_shots.gd -- <dir>` (needs a window).
 
+## Enemies / AI
+- Research + design checklist for new enemies: `docs/ai/enemy_ai_research.md` (read it before adding one).
+- Reusable (`scripts/ai/`): `StateMachine`/`AIState` (small HFSM; `update()` returns the next state name,
+  unknown names bubble to the parent, `force()` for interrupts, `path()` → "combat/throw"), `Perception`
+  (sight cone + close sense + wall LOS, hearing, awareness meter CALM/SUSPICIOUS/ALERT, last-known position;
+  `tick()` from the body), `SoundStimulus.emit(source, radius_m)` (group call to every Perception; *not* named
+  Noise, which is a Godot class), `AttackTokens` (per-target pools: melee 2, ranged 2), `NavMover`
+  (NavigationAgent2D + straight fallback + separation). `scripts/ground.gd` = ground-plane maths (m, m/s).
+- Gremlin (`scripts/enemies/`, `scenes/enemies/gremlin.tscn`): body `gremlin.gd` (tunables at the top), brain
+  `gremlin_states.gd` (calm idle/pace → investigate "?" → combat "!" engage/throw/reposition/charge/slash/back_off/
+  circle → search → return; hurt/dead interrupts), `enemy_fireball.gd` (hits "player", passes allies, bursts on
+  walls/props), `enemy_spawner.gd` (main.gd adds it as World/Enemies; spawns at `gremlin_spawn` markers).
+  `gremlin_rig.gd` is a drawn placeholder with the agreed interface until the 3D rig replaces it.
+  Gremlins die (30 HP) and respawn after 8 s at their marker.
+- Player: in group "player", `take_damage` = red flash (sprite_outline `flash` uniform) + shove + number, no
+  death (user decision). Notes/strum/swing/casts emit sounds the gremlins hear (`player.NOISE_M`).
+- Tests: `godot --headless --path . --fixed-fps 60 -s tools/test_ai.gd` (deterministic, fast); visuals
+  `godot --path . -s tools/ai_shots.gd -- <out.png>`. Tests that need the dummies alone free `World/Enemies`.
+
 ## Next steps
 - Inner outlines between parts (vertex colour `part` is already exported per part group for an ID pass).
 - Hand-painted dungeon art can replace the generated atlas in place (same layout).
