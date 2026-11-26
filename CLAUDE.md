@@ -34,8 +34,8 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
   the diagonal iso of the sprite-poc renders. The character still turns to 8 facings; environment art is
   drawn from this single view only.
 - **One pixel scale everywhere (no mixels):** 1 game px = 4×4 window px (nearest). Stretch is off, so the game
-  buffer = window / 4 (bigger window = more view, same sizes); window opens at room size (480×320 → 1920×1280,
-  capped to the screen). 1 texel = 1 game px
+  buffer = window / 4 (bigger window = more view, same sizes); window opens at a 480×320 game-px view
+  (`main.gd` VIEW_PX → 1920×1280, capped to the screen) and the player's Camera2D follows, clamped to the room. 1 texel = 1 game px
   = 3/80 m. Ground depth foreshortens by sin 38°, wall height by cos 38°. A 16px tile = 0.6 m wide,
   0.97 m deep (floor), 0.76 m tall (wall face).
 
@@ -53,9 +53,15 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
 - `scripts/toon.gd` + `shaders/toon.gdshader` — sprite-poc toon materials (3 bands, Blender lights, Lambert /π),
   swapped in by imported material name. `shaders/sprite_outline.gdshader` — hard alpha + 1px outer outline.
 - `scripts/player.gd` — 8-dir movement in screen space, facing snap, input actions (bound in `main.gd`).
-- Dungeon: `tools/build_dungeon.gd` generates `assets/env/dungeon_tiles.png` (16px atlas, layout in the
-  script header), `dungeon_tileset.tres` and `scenes/dungeon.tscn` (Floor + y-sorted Walls TileMapLayers).
-  Wall tiles sort by their base line (y_sort_origin), so the player walks behind pillars.
+- Dungeon (demo floor, 56×38 tiles = 896×608 px): `tools/build_dungeon.gd` (art pass, import, scene pass; see its
+  header) generates `assets/env/dungeon_tiles.png` (floor + 2 seamless cobble variants, walls, pillars),
+  `dungeon_decals.png` (moss, blood, cracks, puddles, bones, skulls, chains, rubble, bone piles), `dungeon_tileset.tres`
+  and `scenes/dungeon.tscn`: Floor, Decals (no collision; swap the PNG for hand-painted art, same layout) and
+  y-sorted Walls TileMapLayers. Wall/pillar tiles sort by their base line (y_sort_origin), so the player walks
+  behind pillars; only the base row collides. Layout (pillars, decals, spawns) = consts at the script top.
+  `Navigation` = NavigationRegion2D baked at build time over the floor minus pillars/dummies (agent radius 6 px) →
+  NavigationAgent2D works. `Spawns` holds Marker2Ds in groups `gremlin_spawn` and `pedal_spawn` (meta `pedal_id`).
+  `tools/test_floor.gd` (size, markers, nav paths), `tools/floor_shots.gd` (overview + 4x crops, needs a window).
 - Tools: `tools/capture.gd` (contact sheet poses × 8 facings, optional gear indices),
   `tools/screenshot.gd`, `tools/test_logic.gd` (headless state machine + gear smoke test), `tools/inspect.gd`.
 
