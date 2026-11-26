@@ -71,6 +71,7 @@ var _flash := 0.0
 var _burn := 0.0
 var _telegraph := 0.0             # 0..1 glow at the claw (throw windup)
 var _puff := 0.0                  # respawn smoke
+var _fx: Node2D
 
 
 func _ready() -> void:
@@ -81,6 +82,10 @@ func _ready() -> void:
 	rng.seed = hash(spawn_point)
 	perception.body = self
 	rig.anim_event.connect(_on_anim_event)
+	_fx = Node2D.new()                       # drawn over the rig (telegraph ember, respawn puff)
+	_fx.name = "Fx"
+	add_child(_fx)
+	_fx.draw.connect(_draw_fx)
 	brain = GremlinStates.build(self)
 	brain.start(&"calm")
 
@@ -112,6 +117,7 @@ func _process(delta: float) -> void:
 	if rig.has_method(&"set_flash"):        # a 3D rig may tint in its shader instead
 		rig.call(&"set_flash", _flash)
 	queue_redraw()
+	_fx.queue_redraw()
 
 
 # ---------------------------------------------------------------- body API for the brain
@@ -254,14 +260,18 @@ func _draw() -> void:
 		pts.append(Vector2(cos(a) * 8.0, sin(a) * 8.0 * sin(Ground.ELEVATION)))
 	if visible and not (is_dead() and brain.time_in_state > 1.0):
 		draw_colored_polygon(pts, Color(0, 0, 0, 0.3))
+
+
+func _draw_fx() -> void:
 	# throw telegraph: an ember swelling in the claw
 	if _telegraph > 0.0:
 		var h := rig.hand_point()
 		var f := 1.0 if (Engine.get_frames_drawn() / 3) % 2 == 0 else 0.0
-		draw_circle(h, 1.0 + _telegraph * 2.5 + f, Color("c8280c", 0.9))
-		draw_circle(h, 0.5 + _telegraph * 1.5, Color("ffd040"))
+		_fx.draw_circle(h, 1.5 + _telegraph * 3.0 + f, Color("3a0804"))
+		_fx.draw_circle(h, 1.0 + _telegraph * 2.5 + f, Color("ff5a10"))
+		_fx.draw_circle(h, 0.5 + _telegraph * 1.5, Color("ffe070"))
 	if _puff > 0.0:
 		for i in 6:
 			var a := TAU * i / 6.0
 			var r := (1.0 - _puff) * 12.0 + 3.0
-			draw_circle(Vector2(cos(a) * r, -6 + sin(a) * r * 0.5), 3.0 * _puff, Color(0.25, 0.08, 0.06, _puff))
+			_fx.draw_circle(Vector2(cos(a) * r, -6 + sin(a) * r * 0.5), 3.0 * _puff, Color(0.25, 0.08, 0.06, _puff))

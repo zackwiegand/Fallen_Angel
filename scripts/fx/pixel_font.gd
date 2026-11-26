@@ -1,5 +1,5 @@
 class_name PixelFont
-## Tiny 3x5 bitmap digits (+ a music-note glyph "n") drawn as 1px rects with a dark outline,
+## Tiny 3x5 bitmap digits (+ a music-note glyph "n", "!" and "?") drawn as 1px rects with a dark outline,
 ## so text stays on the game's pixel grid.
 
 const GLYPHS := {
@@ -9,6 +9,7 @@ const GLYPHS := {
 	"6": ["111", "100", "111", "101", "111"], "7": ["111", "001", "010", "010", "010"],
 	"8": ["111", "101", "111", "101", "111"], "9": ["111", "101", "111", "001", "111"],
 	"n": ["0110", "0101", "0100", "1100", "1100"],
+	"!": ["1", "1", "1", "0", "1"], "?": ["111", "001", "011", "000", "010"],   # enemy barks
 }
 const OUTLINE := Color("080408")
 
