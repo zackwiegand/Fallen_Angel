@@ -141,6 +141,18 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
 - New guitar: must follow the sprite-poc GUITAR CONTRACT (same socket positions) — hands are baked against them.
 - New material: add a `Toon.PALETTE` entry with the same name as the Blender material.
 
+## Pedal models
+- `blender/pedals/build_pedals.py` (`blender -b -P blender/pedals/build_pedals.py`, then `godot --headless --path . --import`)
+  builds every pedal procedurally → `assets/pedals/pedal_<id>.glb` (+ `pedals.blend` for inspection). The PEDAL
+  CONTRACT is in its header: origin = base centre, footswitch edge toward -Y (Blender), one merged mesh +
+  `jack_in` (pedal's right) / `jack_out` (left) Empties, LED material named `Led<x>`.
+- `scripts/pedals/pedal_view.gd` (`PedalView`): `setup(id)`, `facing` (8-dir snap), `lit` (LED ↔ `Led<x>Off`),
+  `jack_point(&"in"/&"out")` (local 2D px). Own 40px SubViewport, same camera/scale as the rig, re-renders only
+  when facing/lit change. ~16 px wide on screen.
+- Add a pedal: write `build_<id>()` in build_pedals.py (chunky: knobs/LED ≥ 2–3 px, value contrast), register it in
+  `PEDALS`, add its material names to `Toon.PALETTE` (+ `Led<x>` in `Toon.EMISSIVE` and `Led<x>Off` in the palette),
+  rebuild, check with `godot --path . -s tools/pedal_shots.gd -- <dir>` (needs a window).
+
 ## Next steps
 - Inner outlines between parts (vertex colour `part` is already exported per part group for an ID pass).
 - Hand-painted dungeon art can replace the generated atlas in place (same layout).
