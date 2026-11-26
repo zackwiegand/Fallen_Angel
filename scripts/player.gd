@@ -13,6 +13,13 @@ const NOTE_COLORS := [Color("ff5a4a"), Color("ff9a2a"), Color("ffd84a"), Color("
 		Color("4ad8c8"), Color("5aa0ff"), Color("a87aff"), Color("ff7ad8")]
 
 @export var walk_speed := 1.4          # metres / second on the ground
+@export var run_speed := 3.1           # ~2.2x walk; the run clip's stride is sized for it
+## Run: double-tap a direction (two presses of the same arrow within RUN_TAP_WINDOW). Running
+## continues while any direction is held; letting go for less than RUN_GRACE (e.g. a quick
+## left -> right reversal) keeps the run.
+const RUN_TAP_WINDOW := 0.25
+const RUN_GRACE := 0.15
+const MOVE_ACTIONS := [&"move_up", &"move_down", &"move_left", &"move_right"]
 
 ## Every live note (for the looper): note index 0..7 and the instrument it was played with.
 signal note_played(index: int, instrument: int, octave: int)
@@ -67,22 +74,49 @@ func _ready() -> void:
 		rig.equip(slot, GearCatalog.ITEMS[slot][0])
 
 
-func _physics_process(_delta: float) -> void:
+## True while running (double-tap); see RUN_TAP_WINDOW / RUN_GRACE.
+var running := false
+var _last_tap := {}                    # move action -> time (s) of its last press
+var _released_for := 0.0               # seconds with no direction held while running
+
+
+func _physics_process(delta: float) -> void:
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	_update_run(input != Vector2.ZERO, delta)   # raw input: holding through an action resumes the run
 	if rig.is_busy():
 		input = Vector2.ZERO
 	if input != Vector2.ZERO:
 		facing = Vector2(input.x, -input.y).normalized()
-		velocity = ground_to_screen(facing) * walk_speed / METRES_PER_PX
+		velocity = ground_to_screen(facing) * (run_speed if running else walk_speed) / METRES_PER_PX
 		# 3D ground direction: right = +X, away from camera = -Z (the model faces +Z at yaw 0)
 		rig.face(atan2(facing.x, -facing.y))
 	else:
 		velocity = Vector2.ZERO
-	rig.set_moving(input != Vector2.ZERO)
+	rig.set_gait(&"idle" if input == Vector2.ZERO else (&"run" if running else &"walk"))
 	move_and_slide()
 
 
+func _update_run(held: bool, delta: float) -> void:
+	if not running:
+		return
+	_released_for = 0.0 if held else _released_for + delta
+	if _released_for > RUN_GRACE:
+		running = false
+
+
+## A direction press: the second press of the same arrow within RUN_TAP_WINDOW starts a run.
+func _on_move_pressed(action: StringName) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _last_tap.get(action, -INF) <= RUN_TAP_WINDOW:
+		running = true
+		_released_for = 0.0
+	_last_tap[action] = now
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	for action: StringName in MOVE_ACTIONS:
+		if event.is_action_pressed(action):     # echo-free: key repeat doesn't count as a tap
+			_on_move_pressed(action)
 	if event.is_action_pressed("swing"):
 		rig.play_action(&"swing")
 	elif event.is_action_pressed("strum"):
