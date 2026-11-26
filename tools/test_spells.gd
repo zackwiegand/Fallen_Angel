@@ -59,6 +59,8 @@ func _run() -> void:
 	await create_timer(0.3).timeout
 	var world: Node = main.get_node("Game/GameViewport/World")
 	var p = world.get_node("Player")
+	if world.has_node("Enemies"):              # spell maths against the dummies only (no gremlins)
+		world.get_node("Enemies").free()
 	var dummies := get_nodes_in_group("enemies")
 	check("7 dummies in the room", dummies.size() == 7)
 

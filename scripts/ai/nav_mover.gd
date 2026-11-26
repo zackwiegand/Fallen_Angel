@@ -39,6 +39,8 @@ func direction_to_goal(goal: Vector2, arrive_px := 4.0) -> Vector2:
 			target_position = goal
 		if not is_navigation_finished():
 			next = get_next_path_position()
+		if is_navigation_finished():         # reached it, or as close as the navmesh allows
+			return Vector2.ZERO
 	return Ground.dir(body.global_position, next)
 
 

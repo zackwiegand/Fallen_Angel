@@ -21,6 +21,7 @@ const STAGGER_S := 0.35
 const WALK_MPS := 0.6
 const GALLOP_MPS := 3.0
 const STRAFE_MPS := 0.9
+const RETURN_MPS := 1.0           # trotting home after giving up
 const PACE_RADIUS_M := 2.5
 const PACE_PAUSE_S := Vector2(1.2, 3.2)    # random idle time between pacing legs
 

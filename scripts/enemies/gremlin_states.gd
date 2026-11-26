@@ -40,10 +40,14 @@ static func build(g: Gremlin) -> StateMachine:
 
 
 static func _calm_guard(g: Gremlin) -> StringName:
-	if g.perception.is_alert():
+	var p := g.perception
+	if p.is_alert():
 		return &"combat"
-	if g.perception.level() == Perception.Level.SUSPICIOUS and g.perception.has_last_known:
-		return &"investigate"
+	if p.level() == Perception.Level.SUSPICIOUS and p.has_last_known:
+		if p.can_see:                     # a glimpse: turn and stare while the meter fills
+			g.face_toward(p.last_known)
+		else:                             # a noise, or it slipped out of view: go look
+			return &"investigate"
 	return &""
 
 
@@ -390,7 +394,7 @@ class Return extends GState:
 			return &"combat"
 		if p.consume_heard() and p.level() == Perception.Level.SUSPICIOUS:
 			return &"investigate"
-		if g.go_to(g.spawn_point, Gremlin.WALK_MPS, 6.0):
+		if g.go_to(g.spawn_point, Gremlin.RETURN_MPS, 6.0):
 			return &"calm"
 		g.play_move()
 		return &""
