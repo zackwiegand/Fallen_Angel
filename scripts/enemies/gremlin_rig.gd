@@ -89,6 +89,7 @@ func _ready() -> void:
 	sprite.texture = _viewport.get_texture()
 	var mat := ShaderMaterial.new()
 	mat.shader = OUTLINE
+	mat.set_shader_parameter(&"flash_color", Color(1.0, 0.95, 0.85))
 	sprite.material = mat
 	sprite.offset = Vector2(0, -round(CAM_TARGET_Y * cos(e) / PlayerScript.METRES_PER_PX))
 	add_child(sprite)
@@ -104,6 +105,11 @@ func play(anim: StringName) -> void:
 			return
 	current = anim
 	anim_player.play(anim, BLEND)
+
+
+## Hit flash, 0..1 (sprite_outline `flash` uniform; white so it reads on the dark red skin).
+func set_flash(amount: float) -> void:
+	sprite.material.set_shader_parameter(&"flash", amount)
 
 
 func anim_length(anim: StringName) -> float:
