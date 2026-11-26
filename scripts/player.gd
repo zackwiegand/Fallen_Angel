@@ -9,6 +9,10 @@ const CAM_TARGET_Y := 1.15             # rig camera looks at this height above t
 const CANVAS_PX := 128                 # big enough for the full-reach swing
 const SWING_REACH := 2.0               # metres in front that the swing connects
 const SWING_DAMAGE := 8
+## How far (ground metres) enemies hear the player's sounds (SoundStimulus -> Perception).
+const NOISE_M := {&"note": 9.0, &"strum": 12.0, &"swing": 5.0, &"cast_release": 10.0, &"step": 2.0, &"lightning": 12.0}
+const HURT_KNOCKBACK_MPS := 2.5
+const HURT_FLASH_S := 0.25
 const NOTE_COLORS := [Color("ff5a4a"), Color("ff9a2a"), Color("ffd84a"), Color("8ae05a"),
 		Color("4ad8c8"), Color("5aa0ff"), Color("a87aff"), Color("ff7ad8")]
 
@@ -30,6 +34,8 @@ var octave := 0                        # [ / ] shift the note keys' pitch, -2..+
 const OCTAVE_RANGE := 2
 var facing := Vector2(0, -1)           # ground direction (x = screen-right, y = away); starts facing camera
 var _gear_index := {}
+var _knockback := Vector2.ZERO         # screen px/s from enemy hits, decays
+var _hurt_flash := 0.0
 
 
 func _ready() -> void:
@@ -62,6 +68,11 @@ func _ready() -> void:
 	move_child(aura_front, sprite.get_index() + 1)
 	rig.anim_event.connect(sfx.play)
 	rig.anim_event.connect(_on_anim_event)
+	# enemies: the player is hittable and loud (Perception hears these)
+	add_to_group("player")
+	note_played.connect(func(_i: int, _inst: int, _oct: int) -> void: SoundStimulus.emit(self, NOISE_M[&"note"]))
+	rig.anim_event.connect(_make_noise)
+	spellbook.cast.connect(func(spell: StringName, _power: int) -> void: _make_noise(spell))
 	for slot in GearCatalog.SLOTS:
 		_gear_index[slot] = 0
 		rig.equip(slot, GearCatalog.ITEMS[slot][0])
@@ -79,6 +90,8 @@ func _physics_process(_delta: float) -> void:
 	else:
 		velocity = Vector2.ZERO
 	rig.set_moving(input != Vector2.ZERO)
+	velocity += _knockback
+	_knockback = _knockback.move_toward(Vector2.ZERO, 900.0 * _delta)
 	move_and_slide()
 
 
@@ -155,6 +168,32 @@ func _on_anim_event(event: StringName) -> void:
 					hit = true
 			if hit:
 				sfx.play(&"hit")
+
+
+# ---------------------------------------------------------------- enemies: getting hit, noise
+## Enemy hits: red flash, a shove and a damage number. No health/death yet (user decision); notes,
+## spells and the current animation keep going.
+func take_damage(amount: int, kind: StringName, from_dir: Vector2) -> void:
+	_hurt_flash = HURT_FLASH_S
+	_knockback = from_dir.normalized() * HURT_KNOCKBACK_MPS / METRES_PER_PX
+	FloatText.spawn(get_parent(), global_position + Vector2(randf_range(-5, 5), -72), str(amount),
+			Color("ff8a1c") if kind == &"fire" else Color("ff3a2a"))
+	sfx.play(&"hit")
+
+
+func hit_point() -> Vector2:
+	return global_position + Vector2(0, -40)
+
+
+func _process(delta: float) -> void:
+	if _hurt_flash > 0.0:
+		_hurt_flash = maxf(_hurt_flash - delta, 0.0)
+		(sprite.material as ShaderMaterial).set_shader_parameter("flash", 0.8 * _hurt_flash / HURT_FLASH_S)
+
+
+func _make_noise(event: StringName) -> void:
+	if NOISE_M.has(event):
+		SoundStimulus.emit(self, NOISE_M[event])
 
 
 # ---------------------------------------------------------------- projection helpers

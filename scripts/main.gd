@@ -25,6 +25,9 @@ var sequencer: Sequencer
 
 func _ready() -> void:
 	_setup_input()
+	var enemies := EnemySpawner.new()        # gremlins at the level's gremlin_spawn markers
+	enemies.name = "Enemies"
+	player.get_parent().add_child(enemies)
 	music = Music.new()
 	music.name = "Music"
 	add_child(music)

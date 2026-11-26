@@ -3,13 +3,16 @@
 shader_type canvas_item;
 
 uniform vec4 outline_color : source_color = vec4(0.03, 0.015, 0.03, 1.0);
+// hit flash: 0 = off, 1 = solid flash_color (outline stays dark)
+uniform vec4 flash_color : source_color = vec4(1.0, 0.25, 0.2, 1.0);
+uniform float flash : hint_range(0.0, 1.0) = 0.0;
 
 void fragment() {
 	vec2 px = TEXTURE_PIXEL_SIZE;
 	vec2 uv = (floor(UV / px) + 0.5) * px;   // sample texel centres only
 	vec4 c = texture(TEXTURE, uv);
 	if (c.a > 0.5) {
-		COLOR = vec4(c.rgb, 1.0);
+		COLOR = vec4(mix(c.rgb, flash_color.rgb, flash), 1.0);
 	} else {
 		float n = 0.0;
 		for (int y = -1; y <= 1; y++) {
