@@ -5,10 +5,11 @@ extends SceneTree
 ##   gremlin_sheet.png   key poses (rows) x 8 facings (columns)
 ##   gremlin_motion.png  every clip (rows) sampled over time, side view and 3/4 front view
 ##   gremlin_scale.png   a pack of gremlins next to the rocker in the game room
+## and checks every clip x 8 facings x MOTION_SAMPLES for pixels touching the rig canvas edge (cropping).
 
-const CELL := 64
+const CELL := 80                        # review viewport; the rig canvas (64) fits inside with margin
 const SCALE := 4
-const CROP := Rect2i(8, 4, 48, 46)   # part of the canvas around the gremlin that goes on the sheets
+const CROP := Rect2i(8, 6, 64, 64)      # = the rig's whole 64px canvas (feet at 46, sprite centre 8px above)
 const FLOOR_ART := "res://assets/env/dungeon_tiles.png"
 const POSES := [["idle", 0.0], ["walk", 0.25], ["gallop", 0.0], ["gallop", 0.5], ["throw", 0.3],
 		["throw", 0.45], ["throw", 0.55], ["slash", 0.3], ["slash", 0.45], ["hit", 0.15], ["death", 1.0]]
@@ -37,7 +38,7 @@ func _run() -> void:
 	floor.size = Vector2(CELL, CELL)
 	vp.add_child(floor)
 	var rig := GremlinRig.new()
-	rig.position = Vector2(CELL / 2, round(CELL * 0.7))
+	rig.position = Vector2(CELL / 2, 46)
 	vp.add_child(rig)
 	for i in 3: await process_frame
 
@@ -57,6 +58,17 @@ func _run() -> void:
 				await _pose(rig, MOTION[r], float(k) / MOTION_SAMPLES, [2, 1][v])
 				_blit(strip, vp, Vector2i(k, r * 2 + v))
 	strip.save_png(out.path_join("gremlin_motion.png"))
+
+	# cropping check: no opaque pixel may touch the rig's own canvas border, in any clip / facing
+	var cropped := 0
+	for anim: String in MOTION:
+		for k in MOTION_SAMPLES + 1:
+			for d in 8:
+				await _pose(rig, anim, float(k) / MOTION_SAMPLES, d)
+				if _touches_edge(rig.get_node("RigViewport").get_texture().get_image()):
+					cropped += 1
+					print("CROPPED: %s phase %.1f facing %d" % [anim, float(k) / MOTION_SAMPLES, d])
+	print("crop check: %d cropped frames" % cropped)
 
 	# scale: gremlins around the rocker in the real room
 	vp.queue_free()
@@ -91,6 +103,16 @@ func _pose(rig: GremlinRig, anim: String, phase: float, dir: int) -> void:
 	var yaw := dir * PI / 4.0
 	rig.facing = Vector2(sin(yaw), -cos(yaw))
 	for i in 3: await process_frame
+
+
+func _touches_edge(img: Image) -> bool:
+	var w := img.get_width() - 1
+	var h := img.get_height() - 1
+	for i in img.get_width():
+		if img.get_pixel(i, 0).a > 0.5 or img.get_pixel(i, h).a > 0.5 \
+				or img.get_pixel(0, i).a > 0.5 or img.get_pixel(w, i).a > 0.5:
+			return true
+	return false
 
 
 func _blit(sheet: Image, vp: SubViewport, cell: Vector2i) -> void:

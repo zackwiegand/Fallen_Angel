@@ -106,11 +106,12 @@ def build_model(rig):
     rnd = random.Random(7)
     path = [(0.045, -0.31, 0.58), (0.085, -0.29, 0.635), (0.135, -0.255, 0.68), (0.19, -0.22, 0.705),
             (0.235, -0.215, 0.685), (0.26, -0.245, 0.64), (0.262, -0.285, 0.6)]
+    HORN_SPLAY = 0.35                       # extra outward sweep, so the pair stays two horns from the side
     radii = [0.045, 0.05, 0.036, 0.034, 0.024, 0.016, 0.004]          # knots: radius bumps along the horn
     for x in (-1, 1):
         jit = [(rnd.uniform(-0.018, 0.018), rnd.uniform(-0.018, 0.018)) for _ in path]
         jit[0] = jit[-1] = (0, 0)
-        pts = [(px * x, py, pz) for px, py, pz in path]
+        pts = [((px + HORN_SPLAY * (px - path[0][0])) * x, py, pz) for px, py, pz in path]
         B("head", f"Horn.{'L' if x > 0 else 'R'}", tube("Horn", pts, radii, H, n=5, twist=31 * x, jitter=jit))
 
     # arms: long, thick gorilla arms, big ivory claws
