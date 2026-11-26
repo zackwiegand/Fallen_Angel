@@ -4,17 +4,30 @@ extends Node2D
 ## nearest dummy ahead; each next hop jumps to the nearest dummy it hasn't hit yet, so the chain
 ## sweeps the whole group before revisiting anyone (then starts a new sweep). A lone dummy gets
 ## re-hit. So N charges = N hits, spread over as many targets as are in range.
+## The pedal chain (SpellCast) sets the rest: pierce = each bolt passes through its target and carries
+## on PIERCE_OVERSHOOT px, striking everything on its line too; echoes = Damage.deal repeats on every
+## hit; phased = purple bolts; ghost = a delay repeat of the whole chain (translucent).
 
 const HOP_DELAY := 0.09
 const FIRST_RANGE := 230.0       # px
 const BOUNCE_RANGE := 260.0
 const DAMAGE := 5
 const BOLT_LIFE := 0.16
+const PIERCE_OVERSHOOT := 45.0   # px a piercing bolt carries on past its target
+const PIERCE_WIDTH := 9.0        # px from the bolt line that still gets struck
+const COLORS := {false: [Color("3a6cff", 0.8), Color("bfe8ff"), Color.WHITE],      # glow, core, flicker
+		true: [Color("8a3cff", 0.85), Color("e6c8ff"), Color("ffe8ff")]}           # phased: purple
 
 var charges := 1
 var origin := Vector2.ZERO        # guitar headstock, screen px (world-local)
 var aim := Vector2.DOWN           # facing on screen, for the first target / a miss
 var sfx: Sfx
+var damage := DAMAGE
+var pierce := false
+var echoes := 0
+var echo_delay := 0.0
+var phased := false
+var ghost := false
 
 var _bolts: Array = []            # [PackedVector2Array, age]
 var _current: Node2D
@@ -26,6 +39,8 @@ var _next_in := 0.0
 
 func _ready() -> void:
 	z_index = 15
+	if ghost:
+		modulate = Color(1, 1, 1, 0.65)
 	_hops_left = charges
 	_from = origin
 	_current = _pick_first()
@@ -53,8 +68,16 @@ func _hop() -> void:
 		_hops_left = 0
 		return
 	var to: Vector2 = _current.hit_point()
-	_bolts.append([_jagged(_from, to), 0.0])
-	_current.take_damage(DAMAGE, &"lightning", (to - _from).normalized())
+	var dir := (to - _from).normalized()
+	if pierce:                        # the bolt passes through and strikes whatever is on its line
+		var end := to + dir * PIERCE_OVERSHOOT
+		_bolts.append([_jagged(_from, end), 0.0])
+		for e: Node2D in get_tree().get_nodes_in_group("enemies"):
+			if e != _current and _on_line(e.hit_point(), _from, end):
+				Damage.deal(e, damage, &"lightning", dir, echoes, echo_delay, sfx)
+	else:
+		_bolts.append([_jagged(_from, to), 0.0])
+	Damage.deal(_current, damage, &"lightning", dir, echoes, echo_delay, sfx)
 	_from = to
 	_visited.append(_current)
 	var next := _nearest(to, BOUNCE_RANGE, _visited)
@@ -92,6 +115,10 @@ func _nearest(from: Vector2, max_range: float, exclude: Array[Node2D]) -> Node2D
 	return best
 
 
+func _on_line(p: Vector2, a: Vector2, b: Vector2) -> bool:
+	return Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= PIERCE_WIDTH
+
+
 func _jagged(a: Vector2, b: Vector2) -> PackedVector2Array:
 	var pts := PackedVector2Array([a])
 	var n := maxi(3, int(a.distance_to(b) / 9.0))
@@ -106,10 +133,11 @@ func _draw() -> void:
 	for b in _bolts:
 		var pts: PackedVector2Array = b[0]
 		var flicker: bool = int(b[1] / 0.04) % 2 == 0
+		var c: Array = COLORS[phased]
 		for off in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1)]:
-			draw_polyline(_offset(pts, off), Color("3a6cff", 0.8), 1.0)
-		draw_polyline(pts, Color("bfe8ff") if flicker else Color.WHITE, 1.0)
-		draw_rect(Rect2(pts[pts.size() - 1] - Vector2(2, 2), Vector2(5, 5)), Color("bfe8ff", 0.7))
+			draw_polyline(_offset(pts, off), c[0], 1.0)
+		draw_polyline(pts, c[1] if flicker else c[2], 1.0)
+		draw_rect(Rect2(pts[pts.size() - 1] - Vector2(2, 2), Vector2(5, 5)), Color(c[1], 0.7))
 
 
 func _offset(pts: PackedVector2Array, o: Vector2) -> PackedVector2Array:

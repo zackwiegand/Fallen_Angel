@@ -24,12 +24,17 @@ func hit_point() -> Vector2:
 
 func take_damage(amount: int, kind: StringName, from_dir: Vector2) -> void:
 	total_damage += amount
-	_spin += (signf(from_dir.x) if absf(from_dir.x) > 0.1 else randf_range(-1, 1)) * 5.0
-	_flash = 1.0
+	var echo := Damage.is_echo(kind)      # delay-pedal repeat: smaller wobble, fainter number
+	kind = Damage.base_kind(kind)
+	_spin += (signf(from_dir.x) if absf(from_dir.x) > 0.1 else randf_range(-1, 1)) * (2.0 if echo else 5.0)
+	_flash = 0.5 if echo else 1.0
 	if kind == &"fire":
-		_burn = 1.6
-	FloatText.spawn(get_parent(), global_position + Vector2(randf_range(-5, 5), -54), str(amount),
-			COLORS.get(kind, Color.WHITE))
+		_burn = maxf(_burn, 0.8 if echo else 1.6)
+	var color: Color = COLORS.get(kind, Color.WHITE)
+	if echo:
+		color = Color(color.lerp(Color("9ab8ff"), 0.4), 0.6)
+	FloatText.spawn(get_parent(), global_position + Vector2(randf_range(-7, 7), -48 if echo else -54),
+			str(amount), color, 12.0 if echo else 16.0)
 
 
 func _process(delta: float) -> void:
