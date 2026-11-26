@@ -95,6 +95,30 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
 - 2D spells live on the ground plane with a visual height (`player._tip_ground()` projects the 3D headstock).
 - `tools/test_spells.gd` (pattern + damage tests), `tools/spell_shots.gd` (frames of both spells).
 
+## Pedals (collectible effect pedals; order matters)
+- Data: `scripts/pedals/pedal_def.gd` (`PedalDef`: names, colours, `make_audio_effect()`, `transform(cast)`),
+  one subclass per pedal (`delay_pedal.gd` CHIEF CD-3, `phaser_pedal.gd` Skyman Phaser-R), listed in
+  `PedalRegistry.PEDALS`. New pedal = subclass + one registry line (+ model, see "Pedal models").
+- `Pedalboard` (child of the player): ordered `chain`, bypass per pedal, `chain_changed`. Owns the `Pedals`
+  AudioServer bus (one effect per pedal in chain order, bypass = effect disabled). The player's `Sfx` plays on it
+  (`Sfx.bus`); music and the looper's `LoopSfx` stay dry.
+- Spells: `scripts/spells/spell_cast.gd` (`SpellCast`) is the cast as data; `pedalboard.apply(cast).launch(world)`.
+  Each active pedal transforms it for the ones after it. Delay: +3 echoes (`Damage.deal`, ECHO_TIME 0.3 s apart =
+  the audio repeat time, each half: 12 → 6 3 2). Phaser: pierce + purple aura; if echoes already exist (delay
+  before it) they become 3 ghost casts on the same path at 1/2, 1/4, 1/8 damage, all piercing. So Phaser > Delay
+  = pierce + echoes on every target; Delay > Phaser = piercing ghosts. Lightning pierce = each bolt passes through
+  its target (PIERCE_OVERSHOOT) and strikes everything on its line.
+- Echo hits use kind `<element>_echo` (`Damage.echo_kind/base_kind/is_echo`); targets show them fainter
+  (`dummy.gd`). New hittable things should call `Damage.base_kind()` before element logic.
+- World: `PedalPickup` (scene `scenes/pedals/pedal_pickup.tscn`) spawns at `pedal_spawn` markers (meta
+  `pedal_id`) or fallback spots, joins the chain on touch. `PedalTrail` floats the pedals after the player
+  (snake follow when moving, arc behind when idle, handed out right→left so the chain reads like a real board)
+  with verlet-rope cables guitar → in jack (right) → out jack (left) → next. Tunables at the top of each script.
+- Menu: `PedalboardMenu` (Tab, pauses, PROCESS_MODE_ALWAYS), GTR > pedals > AMP, Enter pick up/drop + arrows
+  reorder, B/Space bypass, live text from `Pedalboard.describe()`. Drawn in game px with `PixelFont` (now has capitals).
+- `tools/test_pedals.gd` (orders, bypass, echo values, bus order, pierce on dummies, pickup + menu flow),
+  `tools/pedal_trail_shots.gd -- <dir>` (needs a window: trail, ghosts, echoes, menu).
+
 ## Sound
 - `scripts/sfx_synth.gd` synthesizes bit-crushed PCM at startup (no audio files): footstep variants, swing
   whoosh, palm-muted power-chord strum. `scripts/sfx.gd` plays them.

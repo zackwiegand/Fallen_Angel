@@ -7,18 +7,19 @@ extends Node2D
 ## order, and bob. Every pedal is its own node in the y-sorted world (with a ground shadow); each
 ## cable sorts just behind the pedal it plugs into.
 
-const FIRST_GAP := 20.0          # px from the player to the first pedal while moving
-const FOLLOW_GAP := 16.0         # px between pedals while moving
+const FIRST_GAP := 24.0          # px from the player to the first pedal while moving
+const FOLLOW_GAP := 21.0         # px between pedals while moving
 const FOLLOW_RATE := 8.0         # how snappily they follow (1/s)
 const BEHIND_BIAS := 0.7         # how strongly a following pedal swings round behind its leader
 const IDLE_AFTER := 0.35         # s standing still before they gather
-const IDLE_RADIUS := 26.0        # ground px from the player's feet
-const IDLE_SPREAD := deg_to_rad(120.0)   # arc the gathered pedals spread over (for 4+ pedals)
+const IDLE_RADIUS := 34.0        # ground px from the player's feet
+const IDLE_SPACING := 28.0       # ground px between neighbours on the idle arc (room for the cable)
+const IDLE_MAX_SPREAD := deg_to_rad(200.0)   # the arc never wraps further round than this
 const IDLE_RATE := 2.5
 const HOVER := 11.0              # px above the ground
 const BOB := 1.5
 const BOB_SPEED := 2.6
-const GUITAR_JACK := Vector2(0, -20)     # where the first cable leaves the player (feet-relative)
+const GUITAR_JACK := Vector2(8, -18)     # first cable leaves the hip on the first pedal's side (feet-relative)
 
 var player: Node2D               # player.gd (pedalboard, facing, velocity, ground_to_screen)
 
@@ -78,12 +79,13 @@ func _process(delta: float) -> void:
 	_still = 0.0 if moving else _still + delta
 	var idle := _still > IDLE_AFTER
 	var back: Vector2 = -player.ground_to_screen(player.facing).normalized()
+	var slots := _idle_slots(chain.size())
 	for i in chain.size():
 		var f: Floater = _floaters[chain[i]]
 		var target: Vector2
 		var rate := FOLLOW_RATE
 		if idle:
-			target = player.position + _idle_slot(i, chain.size())
+			target = player.position + slots[i]
 			rate = IDLE_RATE
 		else:
 			var leader: Vector2 = player.position if i == 0 else _floaters[chain[i - 1]].position
@@ -99,21 +101,30 @@ func _process(delta: float) -> void:
 	# cables: guitar -> first pedal's input, each output -> next input
 	for i in _cables.size():
 		var to: Floater = _floaters[chain[i]]
-		var a: Vector2 = player.global_position + GUITAR_JACK if i == 0 \
-				else _floaters[chain[i - 1]].view.to_global(_floaters[chain[i - 1]].view.jack_point(&"out"))
 		var b := to.view.to_global(to.view.jack_point(&"in"))
+		var a: Vector2
+		if i == 0:                      # the guitar's jack, on the hip facing the first pedal
+			a = player.global_position + Vector2(GUITAR_JACK.x * signf(b.x - player.global_position.x), GUITAR_JACK.y)
+		else:
+			a = _floaters[chain[i - 1]].view.to_global(_floaters[chain[i - 1]].view.jack_point(&"out"))
 		_cables[i].position = to.position - Vector2(0, 0.5)       # sorts just behind its pedal
 		_cables[i].step(a, b, delta)
 
 
-## Gathered spot for pedal i of n: on an arc behind the player (ground plane, foreshortened),
-## first pedal on the screen-left when facing the camera, with a slow drift.
-func _idle_slot(i: int, n: int) -> Vector2:
-	var t := 0.5 if n == 1 else float(i) / (n - 1)
-	var spread := IDLE_SPREAD * minf(1.0, (n - 1) / 3.0)
-	var g: Vector2 = (-player.facing).rotated(lerpf(spread / 2.0, -spread / 2.0, t)) * IDLE_RADIUS
-	var drift := Vector2(sin(_time * 0.7 + i * 2.0), cos(_time * 0.53 + i * 1.1)) * 1.5
-	return player.ground_to_screen(g) + drift
+## Gathered spots (player-relative) for n pedals: an arc behind the player on the ground plane,
+## handed out right to left on screen so the chain reads like a real board (signal enters a
+## pedal on its right, leaves on its left) and the cables don't cross behind the pedals.
+func _idle_slots(n: int) -> Array[Vector2]:
+	var spread := minf(IDLE_SPACING / IDLE_RADIUS * (n - 1), IDLE_MAX_SPREAD)
+	var out: Array[Vector2] = []
+	for i in n:
+		var t := 0.5 if n == 1 else float(i) / (n - 1)
+		var g: Vector2 = (-player.facing).rotated(lerpf(spread / 2.0, -spread / 2.0, t)) * IDLE_RADIUS
+		out.append(player.ground_to_screen(g))
+	out.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x > b.x)
+	for i in n:
+		out[i] += Vector2(sin(_time * 0.7 + i * 2.0), cos(_time * 0.53 + i * 1.1)) * 1.5
+	return out
 
 
 ## One floating pedal: the node sits on the ground (y-sort, shadow); the view hovers above it.
@@ -131,12 +142,12 @@ class Floater extends Node2D:
 ## with a few highlight glints and plug ends.
 class Cable extends Node2D:
 	const POINTS := 8
-	const SLACK := 1.3            # rope length / jack distance
+	const SLACK := 1.5            # rope length / jack distance
 	const GRAVITY := 420.0        # px/s^2
 	const DAMPING := 0.94
 	const ITERATIONS := 6
-	const DARK := Color("120e16")
-	const GLINT := Color("5a4e66")
+	const DARK := Color("0a080c")
+	const GLINT := Color("8a7e96")
 	const PLUG := Color("a8a8b4")
 
 	var _p := PackedVector2Array()     # global positions
@@ -177,7 +188,7 @@ class Cable extends Node2D:
 		for q in _p:
 			pts.append(to_local(q).round())
 		draw_polyline(pts, DARK, 1.0)
-		for k in range(2, POINTS - 2, 2):
-			draw_rect(Rect2(pts[k] + Vector2(0, -1), Vector2.ONE), GLINT)
+		for k in range(1, POINTS - 1, 2):               # sheen dots along the rubber
+			draw_rect(Rect2(pts[k], Vector2.ONE), GLINT)
 		for end in [pts[0], pts[pts.size() - 1]]:
 			draw_rect(Rect2(end - Vector2.ONE, Vector2(2, 2)), PLUG)
