@@ -22,8 +22,14 @@ const PALETTE := {
 	# recolour variants used by gear items
 	"BonePlate": [Vector3(0.09, 0.07, 0.045), Vector3(0.36, 0.31, 0.22), Vector3(0.78, 0.72, 0.56), true],
 	"Oxblood": [Vector3(0.03, 0.003, 0.003), Vector3(0.14, 0.015, 0.012), Vector3(0.34, 0.05, 0.04), false],
+	# enemies: devil-gremlin (blender/enemies/gremlin.py)
+	"GremlinSkin": [Vector3(0.035, 0.002, 0.003), Vector3(0.17, 0.012, 0.01), Vector3(0.45, 0.045, 0.028), false],
+	"GremlinHorn": [Vector3(0.1, 0.075, 0.045), Vector3(0.42, 0.35, 0.22), Vector3(0.82, 0.74, 0.54), false],
 }
-const EMISSIVE := {"Eye": Vector3(1.0, 0.05, 0.0)}
+const EMISSIVE := {
+	"Eye": Vector3(1.0, 0.05, 0.0),
+	"GremlinEye": Vector3(1.0, 0.82, 0.1), "GremlinMaw": Vector3(1.0, 0.32, 0.02), "GremlinFire": Vector3(1.0, 0.6, 0.12),
+}
 
 static var _cache := {}
 
