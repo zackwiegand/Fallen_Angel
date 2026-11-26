@@ -52,7 +52,7 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
 - `blender/export_gltf.py` — `blender -b -P blender/export_gltf.py`. Execs the sprite-poc scripts, adds a plain
   under-layer (body visible with armor/boots off), splits parts into slots (body/armor/boots), rigidly skins
   each slot to one shared skeleton (+ `root` bone = lift/foot planting, + `guitar` bone = prop placement),
-  bakes idle/walk/strum/swing at 30 fps, writes `assets/rocker/rocker_base.glb` (rig + body + anims),
+  bakes idle/walk/strum/swing (+ Godot-only cast/run) at 30 fps, writes `assets/rocker/rocker_base.glb` (rig + body + anims),
   `assets/gear/armor_*.glb`, `boots_*.glb` (rig + mesh, no anims), `guitar_*.glb` (static, sockets kept).
   Then run `godot --headless --path . --import`.
 - `scripts/rocker_rig.gd` — loads the base, re-parents skinned gear meshes onto the base Skeleton3D
@@ -62,6 +62,16 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
 - `scripts/toon.gd` + `shaders/toon.gdshader` — sprite-poc toon materials (3 bands, Blender lights, Lambert /π),
   swapped in by imported material name. `shaders/sprite_outline.gdshader` — hard alpha + 1px outer outline.
 - `scripts/player.gd` — 8-dir movement in screen space, facing snap, input actions (bound in `main.gd`).
+- **Run**: double-tap an arrow (same arrow twice within `RUN_TAP_WINDOW` 0.25 s) → `player.running`, `run_speed`
+  3.1 m/s (~2.2× walk). Keeps running while any direction is held; a gap shorter than `RUN_GRACE` (0.15 s, e.g.
+  a quick left → right reversal) keeps the run. Run state reads raw input, so holding a direction through a
+  swing/strum/cast resumes the run afterwards (actions themselves stop the character, as from the walk).
+  `run` clip = `anim_run` in export_gltf.py (walk's hunch/rigid boots + RUN_LEAN, longer stride, short flight,
+  guitar bouncing a beat late; RUN_TUCK kept low because a high heel tuck reads as kneeling at sprite size).
+  `RockerRig.set_gait(&"idle"/&"walk"/&"run")`: walk and run share leg phases (L heel strike 0, R 0.5), so a
+  gait switch starts the new clip at the old phase via AnimationNodeAnimation `start_offset` (also across the
+  ~60 ms idle gap of a double-tap, `GAIT_MEMORY`). Note: the playback position excludes `start_offset`;
+  `gait_phase()` adds it back. Tests `tools/test_run.gd`, visuals + crop check `tools/run_shots.gd -- <dir>`.
 - Dungeon: `tools/build_dungeon.gd` generates `assets/env/dungeon_tiles.png` (16px atlas, layout in the
   script header), `dungeon_tileset.tres` and `scenes/dungeon.tscn` (Floor + y-sorted Walls TileMapLayers).
   Wall tiles sort by their base line (y_sort_origin), so the player walks behind pillars.
@@ -85,7 +95,7 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
   hi-res poses from the game camera for posing work.
 
 ## Spells (game premise: melee with the guitar, cast spells by playing note patterns)
-- Controls: arrows move, J swing, K strum, Q W E R A S D F = E minor pentatonic E3 G3 A3 B3 D4 E4 G4 A4, 1-3 gear.
+- Controls: arrows move (double-tap = run), J swing, K strum, Q W E R A S D F = E minor pentatonic E3 G3 A3 B3 D4 E4 G4 A4, 1-3 gear.
 - `scripts/spellbook.gd`: Fire = any E-minor / G-major triad within 1 s (any order/inversion) → `cast`
   animation (new, baked in export_gltf.py `anim_cast`; release at 0.386 s) → `scripts/fx/fireball.gd`.
   Lightning = skip pattern 1 3 2 4 3 5…, up or down; 4 notes = 1 charge, +1 per note (max 12), released on a
