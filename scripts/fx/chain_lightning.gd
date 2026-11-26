@@ -2,17 +2,18 @@ class_name ChainLightning
 extends Node2D
 ## Releases `charges` lightning hops one after another, by priority:
 ##   1. the first bolt strikes the nearest enemy ahead (within FIRST_RANGE of the guitar);
-##   2. each next bolt jumps to the nearest enemy it hasn't hit yet within BOUNCE_RANGE of the current one;
-##   3. if there's no new enemy in range, it bounces back to the enemy it came from (a lone enemy is re-hit).
+##   2. each next bolt jumps to another enemy within BOUNCE_RANGE of the current one, preferring the one
+##      hit the fewest times (new enemies first), then the one hit longest ago, then the nearest;
+##   3. with no other enemy in range, a lone enemy is struck again.
 ## Every target must also stay within CHAIN_REACH of the cast origin, so the chain can't walk across the map.
-## So N charges = N hits, spread over the enemies close together near the caster.
+## So N charges = N hits spread evenly over a mob: 4 gremlins around you and 8 charges = 2 hits each.
 ## The pedal chain (SpellCast) sets the rest: pierce = each bolt passes through its target and carries
 ## on PIERCE_OVERSHOOT px, striking everything on its line too; echoes = Damage.deal repeats on every
 ## hit; phased = purple bolts; ghost = a delay repeat of the whole chain (translucent).
 
 const HOP_DELAY := 0.09
 const FIRST_RANGE := 160.0       # px (~6 m) guitar -> first target
-const BOUNCE_RANGE := 80.0       # px (~3 m) max jump between targets
+const BOUNCE_RANGE := 150.0      # px (~5.6 m) max jump; spans a gremlin mob circling the player
 const CHAIN_REACH := 200.0       # px (~7.5 m) no target farther than this from the cast origin
 const DAMAGE := 5
 const BOLT_LIFE := 0.16
@@ -34,8 +35,9 @@ var ghost := false
 
 var _bolts: Array = []            # [PackedVector2Array, age]
 var _current: Node2D
-var _previous: Node2D             # the target the chain came from (bounce-back fallback)
-var _visited: Array[Node2D] = []
+var _hits := {}                   # target -> times struck by this chain
+var _last_hit := {}               # target -> hop index of its latest strike
+var _hop_index := 0
 var _from := Vector2.ZERO
 var _hops_left := 0
 var _next_in := 0.0
@@ -83,14 +85,12 @@ func _hop() -> void:
 		_bolts.append([_jagged(_from, to), 0.0])
 	Damage.deal(_current, damage, &"lightning", dir, echoes, echo_delay, sfx)
 	_from = to
-	if _current not in _visited:
-		_visited.append(_current)
-	var next := _nearest(to, BOUNCE_RANGE, _visited)     # 2. a new enemy in range
-	if next == null and _alive(_previous):                # 3. none: bounce back to where it came from
-		next = _previous
+	_hop_index += 1
+	_hits[_current] = _hits.get(_current, 0) + 1
+	_last_hit[_current] = _hop_index
+	var next := _next_target(to)
 	if next == null:                                      # lone target: strike it again
 		next = _current if _alive(_current) else null
-	_previous = _current
 	_current = next
 
 
@@ -112,16 +112,21 @@ func _pick_first() -> Node2D:
 	return best
 
 
-func _nearest(from: Vector2, max_range: float, exclude: Array[Node2D]) -> Node2D:
+## Another enemy within BOUNCE_RANGE of `from` (and CHAIN_REACH of the origin): fewest hits first,
+## then least recently hit, then nearest.
+func _next_target(from: Vector2) -> Node2D:
 	var best: Node2D = null
-	var best_d := max_range
+	var best_key := []
 	for e: Node2D in get_tree().get_nodes_in_group("enemies"):
-		if e in exclude or origin.distance_to(e.hit_point()) > CHAIN_REACH:
+		if e == _current or origin.distance_to(e.hit_point()) > CHAIN_REACH:
 			continue
 		var d := from.distance_to(e.hit_point())
-		if d < best_d:
-			best_d = d
+		if d > BOUNCE_RANGE:
+			continue
+		var key := [_hits.get(e, 0), _last_hit.get(e, 0), d]
+		if best == null or key < best_key:
 			best = e
+			best_key = key
 	return best
 
 

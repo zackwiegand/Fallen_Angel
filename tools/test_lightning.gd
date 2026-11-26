@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless chain-lightning targeting tests with stand-in enemies (no world needed):
-## nearest first, unique targets within BOUNCE_RANGE, bounce back to the previous target when no new
-## one is in range, lone target re-hit, CHAIN_REACH leash, dead targets skipped.
+## nearest first, fewest-hits-first spreading within BOUNCE_RANGE (a mob gets hit evenly), lone target
+## re-hit, BOUNCE_RANGE / CHAIN_REACH / FIRST_RANGE limits.
 ##   godot --headless --path . -s tools/test_lightning.gd
 const WATCHDOG_S := 30.0
 const TARGET_SRC := """
@@ -71,8 +71,19 @@ func _run() -> void:
 	check("hops to new enemies in range first (%s)" % [hits], hits == ["A", "B", "C"])
 
 	hits = await _chain({"A": Vector2(0, 40), "B": Vector2(step, 40), "C": Vector2(2 * step, 40)}, 6)
-	check("no new enemy in range -> bounces back to the previous one (%s)" % [hits],
-			hits == ["A", "B", "C", "B", "C", "B"])
+	check("A and C out of each other's range -> spreads via B (%s)" % [hits],
+			hits == ["A", "B", "C", "B", "A", "B"])
+
+	var r := 70.0                                      # a mob of 4 around the caster (2.6 m circle)
+	var mob := {"N": Vector2(0, -r * 0.62), "E": Vector2(r, 0), "S": Vector2(0, r * 0.62), "W": Vector2(-r, 0)}
+	hits = await _chain(mob, 8, Vector2.ZERO, Vector2.RIGHT)
+	var counts := {}
+	for n: String in hits:
+		counts[n] = counts.get(n, 0) + 1
+	check("mob of 4: first 4 hops hit all 4 (%s)" % [hits], hits.slice(0, 4).duplicate().all(
+			func(n: String) -> bool: return hits.slice(0, 4).count(n) == 1))
+	check("mob of 4, 8 charges: 2 hits each (%s)" % [counts], counts.size() == 4 and counts.values().all(
+			func(c: int) -> bool: return c == 2))
 
 	hits = await _chain({"A": Vector2(0, 40), "B": Vector2(step, 40), "Far": Vector2(step + far, 40)}, 5)
 	check("never jumps farther than BOUNCE_RANGE (%s)" % [hits], "Far" not in hits and hits.size() == 5)
