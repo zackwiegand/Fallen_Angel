@@ -114,6 +114,70 @@ def anim_cast(p):
 ANIMS["cast"] = (lambda p, socks: anim_cast(p), 12, 14, 128)
 
 
+# ---------------------------------------------------------------- run: heavy charge (new, Godot only)
+# The walk's old warrior breaking into a charge: same hunch, rigid boots and toe-out, but leaning into
+# it with a longer stride and a short flight phase. Running mechanics applied:
+#  - each leg: contact -> compression ("down", knee loads) -> push-off at ~35% -> flight -> swing
+#    with a high heel tuck -> reach for the next contact. Stance is shorter than swing, so the
+#    thigh curve is time-warped (back extreme at toe-off, not at 50%).
+#  - the body is lowest just after contact and highest mid-flight; flight is short (heavy man).
+#  - older runner: limited hip extension, knees never straight, a ponderous cadence.
+# The guitar stays in the playing hold (hands on the sockets) and bounces a beat behind the body,
+# rocking with the stride, so the arms pump with it. Contacts at phase 0 (L) and 0.5 (R), the same
+# leg phases as the walk, so rocker_rig.gd can cross-fade walk <-> run in step.
+RUN_STRIDE = (38, 22)            # thigh forward / backward swing (deg): weak hip extension
+RUN_TUCK = 58                    # swing knee fold (deg); a sprinter's high heel tuck reads as kneeling at sprite size
+RUN_TOE_OFF = 0.36               # stance share of the leg cycle
+RUN_LEAN = 12                    # forward lean on top of the hunch (walk: 2)
+RUN_FOOT_PITCH = [(0, -12), (0.08, 0), (0.24, 0), (0.4, 34), (0.55, 30), (0.78, 4), (0.92, -10), (1.0, -12)]
+RUN_LIFT = [(0, 0.0), (0.12, -0.055), (0.36, 0.0, linear), (0.68, 0.065), (1.0, 0.0)]   # per step
+
+
+def _run_warp(q):
+    """Leg phase -> gait angle: stance (0..TOE_OFF) covers the first half of the swing curve."""
+    if q < RUN_TOE_OFF:
+        return 0.5 * q / RUN_TOE_OFF
+    return 0.5 + 0.5 * (q - RUN_TOE_OFF) / (1.0 - RUN_TOE_OFF)
+
+
+def leg_run(side, q, pelvis_yaw=0.0):
+    q %= 1.0
+    sgn = 1 if side == "L" else -1
+    c = math.cos(2 * math.pi * _run_warp(q))
+    thigh = -c * (RUN_STRIDE[0] if c > 0 else RUN_STRIDE[1])          # forward at contact
+    if q < RUN_TOE_OFF:     # stance: loads on contact, drives off nearly (never fully) straight
+        u = q / RUN_TOE_OFF
+        knee = 22 + (12 - 22) * u + 18 * bump(q - 0.12, 0.07)
+    else:                   # swing: heel tucks up behind, then the shin reaches for the ground
+        u = (q - RUN_TOE_OFF) / (1.0 - RUN_TOE_OFF)
+        knee = 12 + 10 * u + RUN_TUCK * math.sin(math.pi * min(u / 0.8, 1.0)) ** 1.5
+    foot = -(thigh + knee) + track(RUN_FOOT_PITCH, q)
+    return [(f"thigh.{side}", 'X', thigh), (f"thigh.{side}", 'Y', -4 * sgn),
+            (f"shin.{side}", 'X', knee), (f"foot.{side}", 'X', foot),
+            (f"foot.{side}", 'Z', TOE_OUT * sgn - pelvis_yaw)]
+
+
+def anim_run(p):
+    c = math.cos(2 * math.pi * p)
+    s2 = (2 * p) % 1.0                                    # step phase (both steps alike)
+    lift = track(RUN_LIFT, s2)
+    dip = -lift / 0.055 if lift < 0 else 0.0              # 0..1 compression
+    lean = RUN_LEAN + 4 * dip
+    twist = 9 * c
+    yaw = -8 * c
+    rots = HUNCH + [
+        ("pelvis", 'Z', yaw), ("pelvis", 'Y', 3 * math.sin(2 * math.pi * p)),
+        ("spine", 'X', lean), ("chest", 'Z', twist + 6 * c),
+        ("head", 'X', -0.7 * lean + 3 * dip), ("head", 'Z', -5 * c),   # eyes stay on the road ahead
+    ] + leg_run("L", p, yaw) + leg_run("R", p + 0.5, yaw)
+    lag = track(RUN_LIFT, (s2 - 0.1) % 1.0)              # strap-hung guitar bounces a beat late
+    guitar = hold_placement(lean, twist, dz=0.5 * lag, pitch=5 * math.sin(2 * math.pi * p), roll=3 * dip)
+    return dict(rots=rots, plant=True, lift=lift, guitar=guitar, hands=PLAY_GRIP, body=(lean + 16, twist))
+
+
+ANIMS["run"] = (lambda p, socks: anim_run(p), 12, 16, 128)    # 0.75 s cycle
+
+
 # ---------------------------------------------------------------- gear slots
 ARMOR_PARTS = ("Fauld", "Belt", "Buckle", "Plackart", "Placket", "Cuirass", "Gorget", "Pauldron",
                "Lame", "Spike", "Armband", "Stud", "Bracer", "Cuisse", "Tasset", "Poleyn", "Greave")

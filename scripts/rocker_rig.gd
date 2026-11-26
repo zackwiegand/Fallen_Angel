@@ -12,15 +12,22 @@ signal action_finished(action: StringName)
 signal anim_event(event: StringName)
 
 const BASE_SCENE := preload("res://assets/rocker/rocker_base.glb")
-const LOOPING := ["idle", "walk"]
+const LOOPING := ["idle", "walk", "run"]
 const ACTIONS := [&"strum", &"swing", &"cast"]
+## walk and run share leg phases (left heel strike at 0, right at 0.5), so a switch between them
+## starts the new clip at the old one's phase and the feet stay in step through the cross-fade.
+const GAIT_SYNC := [&"walk", &"run"]
+const GAIT_XFADE := 0.18
+const GAIT_MEMORY := 0.35      # a stop shorter than this (e.g. the double-tap gap) keeps the stride phase
 ## Seconds into each baked clip (times from sprite-poc anims.py):
 ##   walk: heel strikes at phase 0 and 0.5 of the 1.333 s cycle
 ##   strum: the picking hand slams the strings at phase 0.6 (1.0 s clip)
 ##   swing: contact is phase 0.47-0.62 (= seconds); the whoosh peaks SfxSynth.SWING_PEAK after its start
 ##   cast: the thrust releases at phase 0.45 of the 0.857 s clip (export_gltf.py CAST_RELEASE)
+##   run: heel strikes at phase 0 and 0.5 of the 0.75 s cycle (export_gltf.py anim_run)
 const ANIM_EVENTS := {
 	"walk": [[0.01, &"step"], [0.667, &"step"]],
+	"run": [[0.01, &"step"], [0.385, &"step"]],
 	"strum": [[0.6, &"strum"]],
 	"swing": [[0.28, &"swing"], [0.52, &"swing_hit"]],
 	"cast": [[0.386, &"cast_release"]],
@@ -43,6 +50,7 @@ var _guitar_mount: Node3D
 var _step_accum := 0.0
 var _last_state: StringName
 var _pending_action: StringName   # requested but not yet entered (travel is applied next tick)
+var _gait_memory := [0.0, 1.0, -INF]   # last walk/run [phase, clip length, time (s)]
 
 
 func _ready() -> void:
@@ -129,18 +137,30 @@ func _build_anim_tree() -> void:
 	for n in LOOPING:
 		anim_player.get_animation(n).loop_mode = Animation.LOOP_LINEAR
 	var sm := AnimationNodeStateMachine.new()
-	for n in ["idle", "walk", "strum", "swing", "cast"]:
+	for n in ["idle", "walk", "run", "strum", "swing", "cast"]:
 		var a := AnimationNodeAnimation.new()
 		a.animation = n
+		if StringName(n) in GAIT_SYNC:
+			# custom timeline so _enter_gait() can start the clip at the other gait's phase
+			a.use_custom_timeline = true
+			a.timeline_length = anim_player.get_animation(n).length
+			a.loop_mode = Animation.LOOP_LINEAR
 		sm.add_node(n, a)
 	# idle rest pose == strum frame 0, so idle <-> strum cuts; the swing gets real blends
 	_link(sm, "Start", "idle", 0.0).advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO   # start idling without a travel()
 	_link(sm, "idle", "walk", 0.15)
 	_link(sm, "walk", "idle", 0.2)
+	_link(sm, "idle", "run", 0.15)
+	_link(sm, "run", "idle", 0.25)
+	_link(sm, "walk", "run", GAIT_XFADE)
+	_link(sm, "run", "walk", GAIT_XFADE)
 	_link(sm, "idle", "strum", 0.0)
 	_link(sm, "walk", "strum", 0.15)
+	_link(sm, "run", "strum", 0.15)
 	_link(sm, "idle", "swing", 0.1)
 	_link(sm, "walk", "swing", 0.1)
+	_link(sm, "run", "swing", 0.1)
+	_link(sm, "run", "cast", 0.1)
 	_link(sm, "strum", "idle", 0.0, true)
 	_link(sm, "swing", "idle", 0.2, true)
 	_link(sm, "idle", "cast", 0.1)
@@ -179,8 +199,37 @@ func is_busy() -> bool:
 
 ## Locomotion: idle or walk (ignored while an action plays).
 func set_moving(moving: bool) -> void:
-	if not is_busy():
-		playback.travel(&"walk" if moving else &"idle")
+	set_gait(&"walk" if moving else &"idle")
+
+
+## Locomotion state: &"idle", &"walk" or &"run" (ignored while an action plays). Actions stop the
+## character (the player zeroes movement while busy) and return to idle; the next set_gait resumes.
+func set_gait(gait: StringName) -> void:
+	if is_busy():
+		return
+	var current := playback.get_current_node()
+	var now := Time.get_ticks_msec() / 1000.0
+	if current in GAIT_SYNC:
+		_gait_memory = [gait_phase(), playback.get_current_length(), now]
+	if gait == current and playback.is_playing():
+		return
+	if gait in GAIT_SYNC and now - _gait_memory[2] < GAIT_MEMORY:
+		# carry on the stride from where the feet were (the other gait, or a brief stop)
+		var phase: float = _gait_memory[0] + (now - _gait_memory[2]) / _gait_memory[1]
+		var node: AnimationNodeAnimation = (anim_tree.tree_root as AnimationNodeStateMachine).get_node(gait)
+		node.start_offset = fposmod(phase, 1.0) * node.timeline_length
+	playback.travel(gait)
+
+
+## Current locomotion phase 0..1 (left heel strike = 0, right = 0.5) of walk or run; -1 otherwise.
+func gait_phase() -> float:
+	var current := playback.get_current_node()
+	if not current in GAIT_SYNC:
+		return -1.0
+	# the play position doesn't include the node's start_offset, but the pose does
+	var node: AnimationNodeAnimation = (anim_tree.tree_root as AnimationNodeStateMachine).get_node(current)
+	var length := playback.get_current_length()
+	return fposmod(playback.get_current_play_position() + node.start_offset, length) / length
 
 
 ## One-shot actions: strum, swing or cast.
