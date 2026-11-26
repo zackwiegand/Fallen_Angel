@@ -233,6 +233,33 @@ static func charge_tick() -> AudioStreamWAV:
 	return _finish(s, 4, 2, 0.6)
 
 
+## Faint glassy ping on every delay-echo hit (it rings through the delay bus too).
+static func echo_ping() -> AudioStreamWAV:
+	var n := int(0.12 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for i in n:
+		var t := float(i) / RATE
+		s[i] = (sin(TAU * 1760.0 * t) + 0.4 * sin(TAU * 2640.0 * t)) * exp(-t / 0.03)
+	return _finish(s, 5, 2, 0.6)
+
+
+## Pedal pickup: quick rising square arpeggio (E G B E).
+static func pickup() -> AudioStreamWAV:
+	var notes := [329.63, 392.0, 493.88, 659.25]
+	var step := int(0.06 * RATE)
+	var n := step * notes.size() + int(0.2 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var ph := 0.0
+	for i in n:
+		var k := mini(i / step, notes.size() - 1)
+		var t := float(i - k * step) / RATE
+		ph += notes[k] / RATE
+		s[i] = (1.0 if fmod(ph, 1.0) < 0.5 else -1.0) * exp(-t / (0.05 if k < notes.size() - 1 else 0.12))
+	return _finish(s, 4, 2, 0.7)
+
+
 ## Background loop: Em - C - G - D in E natural minor (the key of the note keys' E minor pentatonic),
 ## one bar each at `bpm` (default MUSIC_BPM; tap tempo re-synthesizes). Dark detuned-saw pad + plucked 8th-note bass on the roots + drums
 ## (DRUMS pattern below).

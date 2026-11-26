@@ -13,6 +13,8 @@ const SOUNDS := {
 	&"zap": [-6.0, 0.12],
 	&"hit": [-4.0, 0.1],
 	&"charge_tick": [-12.0, 0.0],
+	&"echo_ping": [-16.0, 0.04],
+	&"pickup": [-6.0, 0.0],
 }
 
 ## Playable instruments for the note keys: [name, volume offset dB]. Index is stored with every
@@ -24,6 +26,8 @@ static var _notes := []       # [instrument][note] -> AudioStreamWAV
 
 ## Base volume of notes from this Sfx (the looper's own Sfx plays a little lower).
 var note_volume_db := -6.0
+## Audio bus for everything this Sfx plays (the player's goes through the Pedals bus). Set before _ready.
+var bus := &"Master"
 
 var _players := {}
 var _note_players := {}      # Vector3i(instrument, note, octave) -> player; one each so notes ring over each other
@@ -41,6 +45,8 @@ func _ready() -> void:
 		_streams[&"hit"] = [SfxSynth.hit()]
 		_streams[&"charge_tick"] = [SfxSynth.charge_tick()]
 		_streams[&"hum"] = [SfxSynth.charge_hum()]
+		_streams[&"echo_ping"] = [SfxSynth.echo_ping()]
+		_streams[&"pickup"] = [SfxSynth.pickup()]
 		var lead := []
 		var chip := []
 		for f: float in Spellbook.NOTE_FREQS:
@@ -52,6 +58,7 @@ func _ready() -> void:
 		p.volume_db = SOUNDS[event][0]
 		p.stream = _streams[event][0]
 		p.max_polyphony = 4
+		p.bus = bus
 		add_child(p)
 		_players[event] = p
 	for inst in INSTRUMENTS.size():
@@ -59,6 +66,7 @@ func _ready() -> void:
 			_note_player(inst, i, 0)
 	_hum = AudioStreamPlayer.new()
 	_hum.stream = _streams[&"hum"][0]
+	_hum.bus = bus
 	add_child(_hum)
 
 
@@ -102,6 +110,7 @@ func _note_player(instrument: int, index: int, octave: int) -> AudioStreamPlayer
 		p.volume_db = note_volume_db + INSTRUMENTS[instrument][1]
 		p.pitch_scale = pow(2.0, octave)
 		p.max_polyphony = 2
+		p.bus = bus
 		add_child(p)
 		_note_players[key] = p
 	return _note_players[key]
