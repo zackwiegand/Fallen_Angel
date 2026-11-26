@@ -5,6 +5,15 @@ A playable proof of concept: a metal-rocker character (gothic plate armor, comba
 who can **move in 8 directions**, **attack (guitar swing)** and **strum** in all 8 directions, rendered
 in a chunky pixel-art isometric look (Dead Cells–style).
 
+## Git rules (user, 2026-11-26)
+- Repo: this folder only, remote `origin` = github.com/zackwiegand/Fallen_Angel. Identity is per-repo
+  (`zackwiegand <zackerywiegandl@gmail.com>`); never change global git config.
+- **Commit freely** at logical steps (a feature, a fix, a refactor), several small commits rather than one big
+  one, clear messages. Stage specific paths, not stray files.
+- **NEVER push** — the user pushes. Never add remotes, force anything or rewrite pushed history.
+- **NEVER work outside this repo** — no other repos, no work repos. `sprite-poc/` is read-only source
+  (export_gltf.py execs it); don't modify it.
+
 ## Key decision: real-time 3D → pixel (not pre-baked sprite sheets)
 User wants lots of swappable gear (armor, boots, helmets, guitars). Baking a sheet per combination is
 multiplicative (10×10×10 items ≈ 1 GB). So:
