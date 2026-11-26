@@ -126,8 +126,9 @@ multiplicative (10×10×10 items ≈ 1 GB). So:
   one subclass per pedal (`delay_pedal.gd` CHIEF CD-3, `phaser_pedal.gd` Skyman Phaser-R), listed in
   `PedalRegistry.PEDALS`. New pedal = subclass + one registry line (+ model, see "Pedal models").
 - `Pedalboard` (child of the player): ordered `chain`, bypass per pedal, `chain_changed`. Owns the `Pedals`
-  AudioServer bus (one effect per pedal in chain order, bypass = effect disabled). The player's `Sfx` plays on it
-  (`Sfx.bus`); music and the looper's `LoopSfx` stay dry.
+  AudioServer bus (one effect per pedal in chain order, bypass = effect disabled). Only the guitar plays on it: the
+  player's notes + strum (`Sfx.instrument_bus`, `Sfx.INSTRUMENT_EVENTS`). Steps, swing, spells, hits (`Sfx.bus`),
+  music and the looper's `LoopSfx` stay dry.
 - Spells: `scripts/spells/spell_cast.gd` (`SpellCast`) is the cast as data; `pedalboard.apply(cast).launch(world)`.
   Each active pedal transforms it for the ones after it. Delay: +3 echoes (`Damage.deal`, ECHO_TIME 0.3 s apart =
   the audio repeat time, each half: 12 → 6 3 2). Phaser: pierce + purple aura; if echoes already exist (delay

@@ -26,8 +26,13 @@ static var _notes := []       # [instrument][note] -> AudioStreamWAV
 
 ## Base volume of notes from this Sfx (the looper's own Sfx plays a little lower).
 var note_volume_db := -6.0
-## Audio bus for everything this Sfx plays (the player's goes through the Pedals bus). Set before _ready.
+## Events that are the guitar itself, so they play on `instrument_bus` (through the pedals) with the notes.
+const INSTRUMENT_EVENTS: Array[StringName] = [&"strum"]
+
+## Audio bus for the sound effects (steps, swing, spells, hits...). Set before _ready.
 var bus := &"Master"
+## Audio bus for the instrument: notes + INSTRUMENT_EVENTS (the player's goes through the Pedals bus).
+var instrument_bus := &"Master"
 
 var _players := {}
 var _note_players := {}      # Vector3i(instrument, note, octave) -> player; one each so notes ring over each other
@@ -58,7 +63,7 @@ func _ready() -> void:
 		p.volume_db = SOUNDS[event][0]
 		p.stream = _streams[event][0]
 		p.max_polyphony = 4
-		p.bus = bus
+		p.bus = instrument_bus if event in INSTRUMENT_EVENTS else bus
 		add_child(p)
 		_players[event] = p
 	for inst in INSTRUMENTS.size():
@@ -110,7 +115,7 @@ func _note_player(instrument: int, index: int, octave: int) -> AudioStreamPlayer
 		p.volume_db = note_volume_db + INSTRUMENTS[instrument][1]
 		p.pitch_scale = pow(2.0, octave)
 		p.max_polyphony = 2
-		p.bus = bus
+		p.bus = instrument_bus
 		add_child(p)
 		_note_players[key] = p
 	return _note_players[key]

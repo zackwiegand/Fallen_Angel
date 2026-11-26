@@ -62,7 +62,7 @@ func _ready() -> void:
 	add_child(pedalboard)
 	sfx = Sfx.new()
 	sfx.name = "Sfx"
-	sfx.bus = Pedalboard.BUS           # live notes, strum and spell sounds go through the pedals
+	sfx.instrument_bus = Pedalboard.BUS   # only the guitar (notes, strum) goes through the pedals; sfx stay dry
 	add_child(sfx)
 	var trail := PedalTrail.new()       # the pedals float after the player, y-sorted in the world
 	trail.player = self

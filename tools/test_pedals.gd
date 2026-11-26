@@ -102,10 +102,17 @@ func _test_bus() -> void:
 	check("bypass disables the effect", not AudioServer.is_bus_effect_enabled(bus, 0)
 			and AudioServer.is_bus_effect_enabled(bus, 1))
 	var sfx := Sfx.new()
-	sfx.bus = Pedalboard.BUS
+	sfx.instrument_bus = Pedalboard.BUS
 	root.add_child(sfx)
-	var routed := sfx.get_children().all(func(p: Node) -> bool: return p.bus == Pedalboard.BUS)
-	check("player Sfx players route to the Pedals bus", routed)
+	var wet := []
+	var dry := []
+	for p: AudioStreamPlayer in sfx.get_children():
+		(wet if p.bus == Pedalboard.BUS else dry).append(p.stream)
+	var strum: AudioStream = sfx._players[&"strum"].stream
+	var step: AudioStream = sfx._players[&"step"].stream
+	check("notes + strum go through the Pedals bus (%d players)" % wet.size(), strum in wet and wet.size() > 1)
+	check("steps / spells / hits stay dry (%d players)" % dry.size(), step in dry
+			and sfx._players[&"zap"].bus == &"Master" and sfx._players[&"echo_ping"].bus == &"Master")
 	sfx.free()
 
 
